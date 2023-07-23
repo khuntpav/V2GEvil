@@ -119,11 +119,12 @@ copy_env() {
     if [[ "$1" == "evcc" ]]; then
         # EVCC
         # Copy config file for EVCC to .env
-        cp ~/V2G/repos/V2GEvil/config/env-evcc ~/V2G/repos/iso15118/.env
-        if (( $? != 0 )); then
-            echo "Unable to copy env-evcc to .env" >&2
-            exit 1
-        fi
+        cp ~/V2G/repos/V2GEvial/config/env-evcc ~/V2G/repos/iso15118/.env\
+            || { echo "Unable to copy .env-evcc to .env"; exit 1; }
+        #if (( $? != 0 )); then
+        #    echo "Unable to copy env-evcc to .env" >&2
+        #    exit 1
+        #fi
     elif [[ "$1" == "secc" ]]; then
         # SECC
         # Copy config file for SECC to .env
