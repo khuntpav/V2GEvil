@@ -1,6 +1,5 @@
 docs/
 .config/
 examples/
-src/
 tests/
 scripts/test.sh
