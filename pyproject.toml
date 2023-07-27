@@ -1,0 +1,19 @@
+[project]
+name = "V2GEvil"
+authors = [{name = "khuntpav", email = ""}]
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "scapy"
+]
+
+[scripts]
+v2gevil = "v2gevil.__main__:main"
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
