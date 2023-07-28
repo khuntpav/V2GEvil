@@ -27,8 +27,16 @@ V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
 ```
 #### 4. Install it as package
 ```bash
+
 # Virtualevn is activated
-(V2GEvil) V2GEvil:~/V2GEvil$
+(V2GEvil) V2GEvil:~/V2GEvil$ pip3 install -e . # For development
+(V2GEvil) V2GEvil:~/V2GEvil$ pip3 install . # Normal install
 ```
 
 ## Usage
+```bash
+# Name can be changed in pyproject.toml -> [project.scripts]
+(V2GEvil) V2GEvil:~/V2GEvil$ v2gevil-run
+```
+If there are issues like: command not found, reboot PC and start from command:
+- *pyenv activate "$NAME"*
