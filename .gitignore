@@ -1,5 +1,9 @@
+build/
 docs/
 .config/
 examples/
 tests/
 scripts/test.sh
+pyproject_poetry.toml
+requirements.txt
+*/__pycache__/
