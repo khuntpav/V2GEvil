@@ -32,6 +32,21 @@ V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
 (V2GEvil) V2GEvil:~/V2GEvil$ pip3 install -e . # For development
 (V2GEvil) V2GEvil:~/V2GEvil$ pip3 install . # Normal install
 ```
+~~
+
+I changed my strategy because it's not working. The virtualenv in pyenv is sometimes broken...
+I had to move to use poetry.
+
+### New Steps
+#### 1. Clone this repository
+#### 2. cd to the repository
+#### 3. Install poetry
+#### 4. Execute following commands
+```bash
+V2GEvil:~/V2GEvil$ poetry install
+V2GEvil:~/V2GEvil$ poetry shell
+(v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil
+```
 
 ## Usage
 ```bash
@@ -40,3 +55,6 @@ V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
 ```
 If there are issues like: command not found, reboot PC and start from command:
 - *pyenv activate "$NAME"*
+
+## Documentation
+I use [mkdocs materials](https://squidfunk.github.io/mkdocs-material/getting-started/) for the documentation purposes.

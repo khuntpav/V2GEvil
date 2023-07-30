@@ -1,19 +1,19 @@
-[project]
-name = "V2GEvil"
-authors = [{name = "khuntpav", email = ""}]
+[tool.poetry]
+name = "v2gevil"
 version = "0.1.0"
+description = ""
+authors = ["khuntpav <p.smoulin@seznam.cz>"]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "requests",
-    "scapy"
-]
+packages = [{include = "src/v2gevil"}]
 
-[scripts]
-v2gevil = "v2gevil.__main__:main"
+[tool.poetry.dependencies]
+python = "^3.10"
+scapy = "^2.5.0"
 
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[project.optional-dependencies]
-dev = [
-    "pytest"
-]
+[tool.poetry.scripts]
+v2gevil = "src.v2gevil.cli.__main__:main"
+
