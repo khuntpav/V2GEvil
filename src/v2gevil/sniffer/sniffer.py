@@ -20,6 +20,3 @@ def banner():
 def sniff():
     """Sniff packets"""
     print("Sniffing packets...")
-
-#if __name__ == "__main__":
-#    sniffer_tools()

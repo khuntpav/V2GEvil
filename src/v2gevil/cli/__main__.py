@@ -1,5 +1,6 @@
 # Desc: Main entry point for the CLI
-# TODO: Some option called auto, that will automatically load modules for automatic exploitation/evaluation
+# TODO: Some option called auto, that will automatically
+#       load modules for automatic exploitation/evaluation
 
 import logging
 import rich.traceback
@@ -35,6 +36,3 @@ def banner():
 
 
 main.add_command(sniffer.sniffer_tools)
-
-#if __name__ == "__main__":
-#    main()
