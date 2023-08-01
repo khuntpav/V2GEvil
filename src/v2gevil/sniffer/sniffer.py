@@ -17,6 +17,9 @@ def banner():
     logger.debug("Hello, from sniffer module!")
 
 @sniffer_tools.command(name="sniff")
-def sniff():
+@click.option("--interface", "-i", default="eth_car", help="Interface to sniff on, default: eth0")
+def sniff(interface: str, mode: str = "pcap"):
     """Sniff packets"""
     print("Sniffing packets...")
+    logger.debug(f"Sniffing packets on interface: {interface}")
+
