@@ -6,4 +6,4 @@ tests/
 scripts/test.sh
 pyproject_poetry.toml
 requirements.txt
-*/__pycache__/
+*__pycache__/

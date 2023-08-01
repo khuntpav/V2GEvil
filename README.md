@@ -7,14 +7,16 @@ In the futrue there will be two parts:
 - Evil station: to exploit cars
 
 ## How to make it running
-I use pip in combination with pyproject.toml. I also use the pyenv with virtualenv plugin to manage Python version and dependencies.
+~~I use pip in combination with pyproject.toml. I also use the pyenv with virtualenv plugin to manage Python version and dependencies.~~
+
+I use poetry together with pyproject.toml. Steps are belo2 this section.
 
 Starting with PEP 621, the Python community selected pyproject.toml as a standard way of specifying project metadata [Setuptools pyproject config](https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html).
 
-### Steps
-#### 1. Clone this repository
-#### 2. cd to the repository
-#### 3. Use pyenv virtualenv to create virtualenv for this project
+### ~~Old Steps~~
+#### 1. ~~Clone this repository~~
+#### 2. ~~cd to the repository~~
+#### 3. ~~Use pyenv virtualenv to create virtualenv for this project~~
 ```bash
 # $VERSION - specific version of Python, recommended 3.10.12
 VERSION="3.10.12"
@@ -25,14 +27,13 @@ V2GEvil:~/V2GEvil$ pyenv virtualenv "$VERSION" "$NAME"
 V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
 
 ```
-#### 4. Install it as package
+#### 4. ~~Install it as package~~
 ```bash
 
 # Virtualevn is activated
 (V2GEvil) V2GEvil:~/V2GEvil$ pip3 install -e . # For development
 (V2GEvil) V2GEvil:~/V2GEvil$ pip3 install . # Normal install
 ```
-~~
 
 I changed my strategy because it's not working. The virtualenv in pyenv is sometimes broken...
 I had to move to use poetry.
@@ -50,11 +51,10 @@ V2GEvil:~/V2GEvil$ poetry shell
 
 ## Usage
 ```bash
-# Name can be changed in pyproject.toml -> [project.scripts]
-(V2GEvil) V2GEvil:~/V2GEvil$ v2gevil-run
+# Name can be changed in pyproject.toml -> [tool.poetry.scripts]
+(V2GEvil) V2GEvil:~/V2GEvil$ v2gevil --help
 ```
-If there are issues like: command not found, reboot PC and start from command:
-- *pyenv activate "$NAME"*
+
 
 ## Documentation
-I use [mkdocs materials](https://squidfunk.github.io/mkdocs-material/getting-started/) for the documentation purposes.
+I will use [mkdocs materials](https://squidfunk.github.io/mkdocs-material/getting-started/) for the documentation purposes.
