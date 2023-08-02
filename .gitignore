@@ -9,3 +9,4 @@ requirements.txt
 **/__pycache__/
 *.pyc
 *.pyo
+src/v2gevil/v2gtp/v2gtp_description.md

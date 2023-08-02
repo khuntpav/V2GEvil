@@ -7,6 +7,7 @@ import rich.traceback
 import rich_click as click
 from rich.logging import RichHandler
 from ..sniffer import sniffer
+from ..v2gtp import v2gtp
 from .console import console
 
 logger = logging.getLogger(__name__)
@@ -34,5 +35,5 @@ def banner():
     """Prints a basic banner from __main__.py"""
     print("Hello, from banner!")
 
-
+main.add_command(v2gtp.v2gtp_tools)
 main.add_command(sniffer.sniffer_tools)

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "v2gevil"
+name = "V2GEvil"
 version = "0.1.0"
 description = ""
 authors = ["khuntpav <p.smoulin@seznam.cz>"]
@@ -10,6 +10,7 @@ packages = [{include = "src/v2gevil"}]
 python = "^3.10"
 scapy = "^2.5.0"
 rich-click = "^1.6.1"
+cryptography = "^41.0.2"
 
 [build-system]
 requires = ["poetry-core"]

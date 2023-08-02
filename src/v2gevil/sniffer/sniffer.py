@@ -92,11 +92,11 @@ def sniff(live: bool, pcap: bool, interface: str, file: str, ipv6: bool):
     #    interface = mode[1]
     #    logger.debug('Sniffing packets on interface %s', interface)
     #    print("Sniffing packets on interface ... %s", interface)
-    #    exit(1)
+    #    exit(1)z
 
 #@sniffer_tools.command(name="analyze")
 #@click.option("--file", "-f", default=None, show_default=True, help="File to analyze")
-def analyze(file: str, ipv6: bool):
+def analyze(file: str, ipv6: bool, print_summary: bool = True):
     """Analyze packets from pcap file"""
     # Importing here, because it slows down the CLI
     #import scapy.all as scapy OR do it like this:
@@ -105,25 +105,99 @@ def analyze(file: str, ipv6: bool):
     from scapy.all import IP
     print("Analyzing packets from file %s", file)
     logger.debug('Analyzing packets')
-    print("IPv6: %s", ipv6)
 
     packets = rdpcap(file)
+    # Only IPv6 packets
     if ipv6:
         filtered_packets = packets.filter(lambda pkt: pkt[IPv6] if IPv6 in pkt else None)
+    # Both IPv4 and IPv6 packets
     else:
         # TODO: Maybe change it to use like: --ipv4/--ipv6 
         # filtered_packets = packets.filter(lambda pkt: pkt[scapy.IP] if scapy.IP in pkt else None)
         filtered_packets = packets
 
-    filtered_packets.summary()
+    if print_summary:
+        filtered_packets.nsummary()
+    else:
+        return filtered_packets
 
+# TODO: I have to find a way how to run poetry as root, because it needs root to sniff packets on interface
 def live_sniff(interface: str, ipv6: bool):
     """Sniff packets live on interface"""
     # Importing here, because it slows down the CLI
     import scapy.all as scapy
     print("Sniffing packets live on interface %s", interface)
     logger.debug('Sniffing packets live on interface %s', interface)
+    # Only IPv6 packets
     if ipv6:
         scapy.sniff(iface=interface, filter="ip6")
+    # Both IPv4 and IPv6 packets
     else:
         scapy.sniff(iface=interface, filter="ip")
+
+@sniffer_tools.command(name="inspect")
+@click.option("--file", "-f",
+              default='./examples/pcap_files/Boards_connected_IPv6_and_localhost.pcapng',
+              show_default=True,
+              help="File to analyze")
+@click.option("--ipv6/--no-only-ipv6", "-6",
+              default=True,
+              show_default=True,
+              help="Sniff only IPv6 packets")
+@click.option("--packet-num", "-p",
+              default=0,
+              show_default=True,
+              help="Packet number to inspect")
+@click.option("--show", "-s",
+              default="all",
+              show_default=True,
+              help="Show only given part of packet")
+def inspect(file: str, ipv6: bool, packet_num: int, show: str):
+    """Inspect packet"""
+    from scapy.packet import Raw # Used for PDU of packet
+    from scapy.utils import linehexdump
+    from scapy.layers.inet import TCP
+    from scapy.layers.inet6 import IPv6
+    packets = analyze(file, ipv6, print_summary=False)
+    print("Inspecting packet number %s, using packet.show()", packet_num)
+    if packet_num < len(packets) and packet_num >= 0:
+        pkt = packets[packet_num]
+    else:
+        print("Invalid packet number!")
+        exit(1)
+
+    if show == "all":
+        pkt.show()
+        #pkt.show2()
+    elif show == "raw":
+        if Raw in pkt:
+            pkt[Raw].show()
+            print(pkt[Raw].load)
+            linehexdump(pkt[Raw].load)
+            print(pkt[Raw].fields)
+    elif show == "ipv6":
+        if IPv6 in pkt:
+            pkt[IPv6].show()
+            print(pkt[IPv6].fields)
+    if show == "tcp":
+        if TCP in pkt:
+            pkt[TCP].show()
+    
+    # Testing packets are following:
+    # 1. V2GTP SECC discovery request: packet_num=115,116
+    # 2. V2GTP SECC discovery response: packet_num=121,122
+    # 3. V2GTP V2GEXI request - supportedAppProtocolReq: packet_num=133
+    # 4. V2GTP V2GEXI response - supportedAppProtocolRes: packet_num=144
+    # 5. V2GTP V2GEXI(ISO1 in Wireshark) request - sessionSetupReq: packet_num=156
+
+    # TODO: Maybe interactive mode? Like:
+    # 1. Show packet
+    # 2. Show packet summary
+    # 3. Show packet layers
+    # 4. Show packet layers summary
+    # 5. Show packet layers fields
+    # 6. Show packet layers fields summary
+    # 7. Show packet layers fields values
+    # 8. Show packet layers fields values summary
+    # OR wait for user input and show only what user wants to see
+    # OR maybe use loop and every time wait for packet number to inspect
