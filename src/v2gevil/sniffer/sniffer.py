@@ -175,7 +175,9 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str):
             print(pkt[Raw].load)
             linehexdump(pkt[Raw].load)
             print(pkt[Raw].fields)
+
     elif show == "ipv6":
+        # Maybe change to if pkt.haslayer(IPv6): Don't know what is faster
         if IPv6 in pkt:
             pkt[IPv6].show()
             print(pkt[IPv6].fields)
