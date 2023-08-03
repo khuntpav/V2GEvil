@@ -37,12 +37,21 @@ V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
 
 I changed my strategy because it's not working. The virtualenv in pyenv is sometimes broken...
 I had to move to use poetry.
+I use pyenv for managing python version and poetry as dependency resolver and virtual environment
+for the isolation from the system.
 
 ### New Steps
 #### 1. Clone this repository
 #### 2. cd to the repository
-#### 3. Install poetry
-#### 4. Execute following commands
+#### 3. Use pyenv to manage python versions
+```bash
+VERSION="3.10.12"
+
+V2GEvil:~/V2GEvil$ pyenv install "$VERSION"
+V2GEvil:~/V2GEvil$ pyenv local $VERSION
+```
+#### 4. Install poetry
+#### 5. Execute following commands
 ```bash
 V2GEvil:~/V2GEvil$ poetry install
 V2GEvil:~/V2GEvil$ poetry shell

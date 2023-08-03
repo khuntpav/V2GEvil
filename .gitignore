@@ -11,3 +11,4 @@ requirements.txt
 *.pyo
 src/v2gevil/v2gtp/v2gtp_description.md
 .vscode
+.python-version

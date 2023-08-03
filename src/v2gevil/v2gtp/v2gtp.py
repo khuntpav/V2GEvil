@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import platform
+print(platform.python_version())
+
 import logging
 # For type checking, only true in IDEs and tools for type checking.
 # It will not be used in runtime. Important to use: from __future__ import annotations 
@@ -80,10 +83,41 @@ def extract_v2gtp_pkts(file):
 
     # TODO: Format output like src, dst, payload, etc. usefull for further analysis  
 
+def has_raw_layer(pkt: Packet):
+    """Check if packet has Raw layer. Added because check if Raw layer is in packet is used multiple times"""
+    from scapy.packet import Raw
+
+    if not pkt.haslayer(Raw): # or not Raw in pkt[Raw] what is more efficient/faster?
+        logger.warning("Packet doesn't have Raw layer!")
+        return False
+
+    return True
+
+def has_tcp_layer(pkt: Packet):
+    """Check if packet has TCP layer. Added because check if TCP layer is in packet is used multiple times"""
+    from scapy.layers.inet import TCP
+    
+    if not pkt.haslayer(TCP):
+        logger.warning("Packet doesn't have TCP layer!")
+        return False
+    return True
+
+def has_ipv6_layer(pkt: Packet):
+    """Check if packet has IPv6 layer. Added because check if IPv6 layer is in packet is used multiple times"""
+    from scapy.layers.inet6 import IPv6
+    
+    if not pkt.haslayer(IPv6):
+        logger.warning("Packet doesn't have IPv6 layer!")
+        return False
+    return True
+
 def parse_v2gtp_pkt(pkt: Packet):
     """Parse V2GTP packet => Separate the V2GTP header from the payload"""
     from scapy.packet import Raw
 
+    if not has_raw_layer(pkt):
+        return None, None
+    
     header = pkt[Raw].load[:8]
     payload = pkt[Raw].load[8:]
 
@@ -97,47 +131,61 @@ def parse_v2gtp_pkt(pkt: Packet):
     return header, payload
 
 #@overload
+#@v2gtp_tools.command(name="decode")
+#@click.option("--packet-num", "-p",
+#              default=0,
+#              show_default=True,
+#              help="Packet number to decode")
 #def decode_v2gtp_pkt(packets, packet_num: int = 0,):
 #    """Decode V2GTP packet"""
 #    logger.debug("Trying to decode packet as V2GTP packet with packet number: %s", packet_num)
 #    decode_v2gtp_pkt(packets[packet_num])
-@v2gtp_tools.command(name="decode")
-@click.option("--packet-num", "-p",
-              default=0,
-              show_default=True,
-              help="Packet number to decode")
+
+
 # For now it will use V2GDecoder
-# V2GDecoder will be run as a web server
-# V2GDecoder source: TODO: Add link to V2GDecoder
-def decode_v2gtp_pkt(pkt = None, packet_num: int = 0):
+# V2GDecoder has to run as a web server
+# V2GDecoder source: https://github.com/FlUxIuS/V2Gdecoder
+def decode_v2gtp_pkt(pkt, packet_num: int = 0):
     """Decode V2GTP packet"""
     import requests
     from scapy.packet import Raw
     from scapy.utils import linehexdump
 
-    # Testing only
-    from scapy.all import rdpcap
-    packets = rdpcap('./examples/pcap_files/Boards_connected_IPv6_and_localhost.pcapng')
-    packet_num = 133
-    pkt = packets[packet_num]
-    # Testing only
-
+    #           Testing only        #
+    # ----------------------------- #
+    debug = False
+    if debug:
+        from scapy.all import rdpcap
+        packets = rdpcap('./examples/pcap_files/Boards_connected_IPv6_and_localhost.pcapng')
+        packet_num = 133
+        pkt = packets[packet_num]
+    # ----------------------------- #
+    if not has_raw_layer(pkt):
+        return
+    
     data = pkt[Raw].load
 
-    print("Sending following raw data to V2GDecoder:")
+    print("Parsing following raw data as V2GTP packet:")
     linehexdump(data)
-    #logger.debug("Packet payload: %s", data)
     
     # Calling parse_v2gtp_pkt function to separate V2GTP header from payload
     logger.debug("Trying to parse packet as V2GTP packet...")
     header, payload = parse_v2gtp_pkt(pkt)
+    if header is None or payload is None:
+        return
+    
+    logger.debug(f'Packet data: {data}')
     logger.debug("Packet hex(): %s", data.hex())
     logger.debug("Packet header: %s", header.hex())
     logger.debug("Packet payload: %s", payload.hex())
 
     # Sending separated payload from previous step to V2GDecoder
     # Important! V2GDecoder needs to be first started, before running this command
-    # V2GDecoder will be run as a web server: 
+    # V2GDecoder will be run as a web server by following command:
+    # java -jar V2GDecoder.jar -w
+
+
+
     # TODO: Maybe write my own decoder
     logger.debug("Trying to decode packet as V2GTP packet...")
     r = requests.post('http://localhost:9000', headers={"Format":"EXI"}, data=payload.hex())
@@ -145,8 +193,6 @@ def decode_v2gtp_pkt(pkt = None, packet_num: int = 0):
         print("Response from V2GDecoder:")
         print(r.text)
     else:
-        print("Error: %s", r.status_code)
-        print("Error: %s", r.text)
         logger.warning("Error: %s", r.status_code)
         logger.warning("Error: %s", r.text)
 
@@ -155,4 +201,5 @@ def decode_v2gtp_packets(packets):
     """Decode V2GTP packets"""
     for pkt in packets:
         pkt_num = packets.index(pkt) + 1
-        decode_v2gtp_pkt(pkt, pkt_num)
+        logger.debug("Trying to decode packet as V2GTP packet with packet number: %s", pkt_num)
+        decode_v2gtp_pkt(pkt)

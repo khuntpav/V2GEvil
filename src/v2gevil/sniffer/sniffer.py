@@ -51,49 +51,23 @@ def banner():
               default=True,
               show_default=True,
               help="Sniff only IPv6 packets")
-#@click.option("--IPversion",
-#              # Used v2gevil
-#              default=6,
-#              # Used v2gevil --ipversion
-#              flag_value="both",
-#              show_default=True,
-#              help="Sniff only given IP versions packets")
-# I think there is no need to use ipv4, beacause V2G uses IPv6, so we can sniff both or only IPv6
-# TODO: Still thinking about options:
-#   1. --live --interface $name_of_interface
-#   2. --pcap --file $name_of_file
-# or maybe:
-#   1. --live $name_of_interface
-#   2. --pcap $name_of_file
-# or maybe:
-#   1. --online/--offline $name_of_interface/$name_of_file
-# or maybe:
-#  1. --only-ipv6/--only-ipv4
-# or maybe:
-#   the one with mode and tuple
-#   def sniff(mode: (str,str)): # Use this in case of tuple for mode
-def sniff(live: bool, pcap: bool, interface: str, file: str, ipv6: bool):
+@click.option("--v2gtp/--no-only-v2gtp", 
+              name="v2gtp_flag",
+              is_flag=True,
+              default=True,
+              show_default=True,
+              help="Sniff only V2GTP packets")
+def sniff(live: bool, pcap: bool, interface: str, file: str, ipv6: bool, v2gtp_flag: bool):
     """Sniff packets live"""
     print("Sniffing packets...")
     logger.debug('Sniffing packets')
 
     if live:
-        live_sniff(interface, ipv6)
+        live_sniff(interface, ipv6, v2gtp_flag)
     elif pcap:
         analyze(file, ipv6)
     else:
         print("Invalid mode!")
-
-    #if mode[0] == "pcap":
-    #    file = mode[1]
-    #    analyze(file)
-    #    print("PCAP sniffing not implemented yet!")
-
-    #elif mode[0] == "live":
-    #    interface = mode[1]
-    #    logger.debug('Sniffing packets on interface %s', interface)
-    #    print("Sniffing packets on interface ... %s", interface)
-    #    exit(1)z
 
 #@sniffer_tools.command(name="analyze")
 #@click.option("--file", "-f", default=None, show_default=True, help="File to analyze")
@@ -112,8 +86,7 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
         filtered_packets = packets.filter(lambda pkt: pkt[IPv6] if IPv6 in pkt else None)
     # Both IPv4 and IPv6 packets
     else:
-        # TODO: Maybe change it to use like: --ipv4/--ipv6 
-        # filtered_packets = packets.filter(lambda pkt: pkt[scapy.IP] if scapy.IP in pkt else None)
+        # TODO: Maybe change it to use like: --ipv4/--ipv6
         filtered_packets = packets
 
     if print_summary:
@@ -122,7 +95,7 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
         return filtered_packets
 
 # TODO: I have to find a way how to run poetry as root, because it needs root to sniff packets on interface
-def live_sniff(interface: str, ipv6: bool):
+def live_sniff(interface: str, ipv6: bool, v2gtp_flag: bool):
     """Sniff packets live on interface"""
     # Importing here, because it slows down the CLI
     import scapy.all as scapy
@@ -131,7 +104,10 @@ def live_sniff(interface: str, ipv6: bool):
     # Only IPv6 packets
     if ipv6:
         scapy.sniff(iface=interface, filter="ip6")
-    # Both IPv4 and IPv6 packets
+        if v2gtp_flag:
+            scapy.sniff(iface=interface, filter="ip6 and tcp port 15118")
+        # TODO: Write prn function to print only V2GTP packets
+    # Both IPv4 and IPv6 packets, probably not needed in case of V2GTP
     else:
         scapy.sniff(iface=interface, filter="ip")
 
@@ -152,7 +128,6 @@ def live_sniff(interface: str, ipv6: bool):
               default="all",
               show_default=True,
               help="Show only given part of packet")
-# TODO: Implement decode option
 @click.option("--decode", "-d",
               is_flag=True,              
               default=False,
@@ -162,31 +137,34 @@ def live_sniff(interface: str, ipv6: bool):
 def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
     """Method for inspecting one packet with given number of the packet"""
     from scapy.packet import Raw # Used for PDU of packet
-    from scapy.utils import linehexdump
     from scapy.layers.inet import TCP
     from scapy.layers.inet6 import IPv6
     # Importing here, because otherwise it slows down the CLI
 
     packets = analyze(file, ipv6, print_summary=False)
+    if packets is None:
+        logger.error("Packets are None!")
+        exit(1)
+    
     print("Inspecting packet number %s, using packet.show()", packet_num)
+    logger.debug("Number of packets: %s", len(packets))
     if packet_num < len(packets) and packet_num >= 0:
         pkt = packets[packet_num]
     else:
-        print("Invalid packet number!")
+        logger.error("Invalid packet number!")
         exit(1)
 
     if show == "all":
         pkt.show()
     elif show == "raw":
-        if Raw in pkt:
+        if v2gtp.has_raw_layer(pkt):
             logger.debug("Packet has Raw layer!")
             pkt[Raw].show()
             print(pkt[Raw].fields)
             if decode is True:
                 logger.debug("Trying to decode packet as V2GTP packet...")
-                v2gtp.decode_v2gtp_pkt(pkt[Raw].load)
-            #print(pkt[Raw].load)
-            #linehexdump(pkt[Raw].load)
+                v2gtp.decode_v2gtp_pkt(pkt)
+
         else:
             print("Packet doesn't have Raw layer!")
     elif show == "ipv6":
@@ -214,15 +192,3 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
     # 4. V2GTP V2GEXI response - supportedAppProtocolRes: packet_num=144
     # 5. V2GTP V2GEXI(ISO1 in Wireshark) request - sessionSetupReq: packet_num=156
     # Number of packet is from Wireshark start from 1, but in scapy it starts from 0, so we need to add 1
-
-    # TODO: Maybe interactive mode? Like:
-    # 1. Show packet
-    # 2. Show packet summary
-    # 3. Show packet layers
-    # 4. Show packet layers summary
-    # 5. Show packet layers fields
-    # 6. Show packet layers fields summary
-    # 7. Show packet layers fields values
-    # 8. Show packet layers fields values summary
-    # OR wait for user input and show only what user wants to see
-    # OR maybe use loop and every time wait for packet number to inspect
