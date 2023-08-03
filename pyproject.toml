@@ -12,6 +12,7 @@ scapy = "^2.5.0"
 rich-click = "^1.6.1"
 cryptography = "^41.0.2"
 requests = "^2.31.0"
+black = "^23.7.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -20,3 +21,5 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 v2gevil = "src.v2gevil.cli.__main__:main"
 
+[tool.black]
+line-length = 79
