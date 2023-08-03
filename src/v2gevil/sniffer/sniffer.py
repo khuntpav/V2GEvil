@@ -3,6 +3,7 @@ import logging
 # Not importing here, because it slows down the CLI. Importing in functions instead.
 # import scapy.all as scapy
 import rich_click as click
+from ..v2gtp import v2gtp
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +102,7 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
     # Importing here, because it slows down the CLI
     #import scapy.all as scapy OR do it like this:
     from scapy.all import rdpcap
-    from scapy.all import IPv6
-    from scapy.all import IP
+    from scapy.layers.inet6 import IPv6
     print("Analyzing packets from file %s", file)
     logger.debug('Analyzing packets')
 
@@ -152,12 +152,21 @@ def live_sniff(interface: str, ipv6: bool):
               default="all",
               show_default=True,
               help="Show only given part of packet")
-def inspect(file: str, ipv6: bool, packet_num: int, show: str):
-    """Inspect packet"""
+# TODO: Implement decode option
+@click.option("--decode", "-d",
+              is_flag=True,              
+              default=False,
+              show_default=True,
+              help="Try to decode packet as V2GTP packet."\
+                "Only if raw layer is present, otherwise it will fail.")          
+def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
+    """Method for inspecting one packet with given number of the packet"""
     from scapy.packet import Raw # Used for PDU of packet
     from scapy.utils import linehexdump
     from scapy.layers.inet import TCP
     from scapy.layers.inet6 import IPv6
+    # Importing here, because otherwise it slows down the CLI
+
     packets = analyze(file, ipv6, print_summary=False)
     print("Inspecting packet number %s, using packet.show()", packet_num)
     if packet_num < len(packets) and packet_num >= 0:
@@ -168,29 +177,43 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str):
 
     if show == "all":
         pkt.show()
-        #pkt.show2()
     elif show == "raw":
         if Raw in pkt:
+            logger.debug("Packet has Raw layer!")
             pkt[Raw].show()
-            print(pkt[Raw].load)
-            linehexdump(pkt[Raw].load)
             print(pkt[Raw].fields)
-
+            if decode is True:
+                logger.debug("Trying to decode packet as V2GTP packet...")
+                v2gtp.decode_v2gtp_pkt(pkt[Raw].load)
+            #print(pkt[Raw].load)
+            #linehexdump(pkt[Raw].load)
+        else:
+            print("Packet doesn't have Raw layer!")
     elif show == "ipv6":
         # Maybe change to if pkt.haslayer(IPv6): Don't know what is faster
         if IPv6 in pkt:
+            logger.debug("Packet has IPv6 layer!")
             pkt[IPv6].show()
             print(pkt[IPv6].fields)
-    if show == "tcp":
+        else:
+            print("Packet doesn't have IPv6 layer!")
+    elif show == "tcp":
         if TCP in pkt:
+            logger.debug("Packet has TCP layer!")
             pkt[TCP].show()
+            print(pkt[TCP].fields)
+        else:
+            print("Packet doesn't have TCP layer!")
+    else:
+        print("Invalid show option!")
     
-    # Testing packets are following:
-    # 1. V2GTP SECC discovery request: packet_num=115,116
+    # Testing packets is following:
+    # 1. V2GTP SECC discovery request: packet_num=115,116 
     # 2. V2GTP SECC discovery response: packet_num=121,122
     # 3. V2GTP V2GEXI request - supportedAppProtocolReq: packet_num=133
     # 4. V2GTP V2GEXI response - supportedAppProtocolRes: packet_num=144
     # 5. V2GTP V2GEXI(ISO1 in Wireshark) request - sessionSetupReq: packet_num=156
+    # Number of packet is from Wireshark start from 1, but in scapy it starts from 0, so we need to add 1
 
     # TODO: Maybe interactive mode? Like:
     # 1. Show packet

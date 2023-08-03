@@ -33,7 +33,7 @@ def main(debug: bool):
 @main.command(name="banner")
 def banner():
     """Prints a basic banner from __main__.py"""
-    print("Hello, from banner!")
+    logger.debug("Hello, from banner!")
 
 main.add_command(v2gtp.v2gtp_tools)
 main.add_command(sniffer.sniffer_tools)
