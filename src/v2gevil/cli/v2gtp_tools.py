@@ -28,7 +28,7 @@ def v2gtp_tools():
 )
 def extract(file: str):
     """Extract V2GTP packets from pcap file"""
-    v2gtp.extract_v2gtp_pkts(file=file)
+    v2gtp.extract_v2gtp_pkts_from_file(file=file)
 
 
 @v2gtp_tools.command(name="decode")
