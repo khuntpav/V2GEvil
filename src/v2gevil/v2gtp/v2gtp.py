@@ -4,15 +4,16 @@ Here is the implementation of the V2GTP protocol,
 which is used for communication between EV and EVSE. 
 The implementation is based on ISO 15118-2:2014.
 """
-
 import logging
+import requests
+
 from scapy.packet import Packet
 from scapy.packet import Raw
 from scapy.layers.inet import TCP
 from scapy.layers.inet6 import IPv6
 from scapy.utils import linehexdump
 from scapy.all import rdpcap
-import requests
+
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,11 @@ def decode_v2gtp_pkt_from_file(file: str, packet_num: int = 0):
     """Decode V2GTP packet from pcap file"""
     # TODO: Add check if file exists
     packets = rdpcap(file)
+    if 0 <= packet_num < len(packets):
+        pkt = packets[packet_num]
+    else:
+        logger.error("Invalid packet number!")
+        exit(1)
     # Testing only #
     # ---------------- #
     debug = True
@@ -172,7 +178,7 @@ def decode_v2gtp_pkt_from_file(file: str, packet_num: int = 0):
         packet_num = 133
     # ---------------- #
 
-    decode_v2gtp_pkt(packets[packet_num])
+    decode_v2gtp_pkt(pkt)
 
 
 def decode_v2gtp_packets(packets):
@@ -180,7 +186,8 @@ def decode_v2gtp_packets(packets):
     for pkt in packets:
         pkt_num = packets.index(pkt) + 1
         logger.debug(
-            "Trying to decode packet as V2GTP packet with packet number: %s",
+            "Trying to decode %s. packet(Wireshark numbering style) "
+            "as V2GTP packet",
             pkt_num,
         )
         decode_v2gtp_pkt(pkt)

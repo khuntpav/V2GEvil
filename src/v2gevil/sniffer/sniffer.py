@@ -5,14 +5,10 @@ It can sniff packets live on interface or analyze pcap file.
 """
 import logging
 
-# This import really slows down the CLI, so use only some features from that later
-# Not importing here, because it slows down the CLI. Importing in functions instead.
-# import scapy.all as scapy
 from scapy.all import rdpcap
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw  # Used for PDU of packet
 from scapy.layers.inet import TCP
-from scapy.layers.inet6 import IPv6
 from scapy.sendrecv import sniff as scapy_sniff
 
 from ..v2gtp import v2gtp
@@ -40,14 +36,13 @@ def sniff(
         print("Invalid mode!")
 
 
-# @sniffer_tools.command(name="analyze")
-# @click.option("--file", "-f", default=None, show_default=True, help="File to analyze")
 def analyze(file: str, ipv6: bool, print_summary: bool = True):
     """Analyze packets from pcap file"""
 
     print("Analyzing packets from file %s", file)
     logger.debug("Analyzing packets")
 
+    # TODO: Probable change to use scapy.sniff(offline=file)
     packets = rdpcap(file)
     # Only IPv6 packets
     if ipv6:
@@ -93,11 +88,19 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
 
     print("Inspecting packet number %s, using packet.show()", packet_num)
     logger.debug("Number of packets: %s", len(packets))
-    if packet_num < len(packets) and packet_num >= 0:
+    if 0 <= packet_num < len(packets):
         pkt = packets[packet_num]
     else:
         logger.error("Invalid packet number!")
         exit(1)
+
+    show_enum = {"all", "raw", "ipv6", "tcp"}
+    if show not in show_enum:
+        logger.error("Invalid show option! Exiting...")
+        exit(1)
+        # Maybe switch to raise ValueError instead of exit
+        # For now it will be exit because whole stack trace is long and not needed
+        # raise ValueError("Invalid show option!")
 
     if show == "all":
         pkt.show()
@@ -109,26 +112,22 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
             if decode is True:
                 logger.debug("Trying to decode packet as V2GTP packet...")
                 v2gtp.decode_v2gtp_pkt(pkt)
-
-        else:
-            print("Packet doesn't have Raw layer!")
+        return
     elif show == "ipv6":
         # Maybe change to if pkt.haslayer(IPv6): Don't know what is faster
-        if IPv6 in pkt:
+        # or if IPv6 in pkt:
+        if v2gtp.has_ipv6_layer(pkt):
             logger.debug("Packet has IPv6 layer!")
             pkt[IPv6].show()
             print(pkt[IPv6].fields)
-        else:
-            print("Packet doesn't have IPv6 layer!")
+        return
+
     elif show == "tcp":
-        if TCP in pkt:
+        if v2gtp.has_tcp_layer(pkt):
             logger.debug("Packet has TCP layer!")
             pkt[TCP].show()
             print(pkt[TCP].fields)
-        else:
-            print("Packet doesn't have TCP layer!")
-    else:
-        print("Invalid show option!")
+        return
 
     # Testing packets is following:
     # 1. V2GTP SECC discovery request: packet_num=115,116

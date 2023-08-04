@@ -2,21 +2,20 @@
 
 Calling logic from V2GTP module.
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
+# from __future__ import annotations
+# from typing import TYPE_CHECKING
 import rich_click as click
 from ..v2gtp import v2gtp
 
 # For type checking, only true in IDEs and tools for type checking.
 # It will not be used in runtime. Important to use: from __future__ import annotations
-if TYPE_CHECKING:
-    from scapy.packet import Packet
+# if TYPE_CHECKING:
+#    from scapy.packet import Packet
 
 
 @click.group()
 def v2gtp_tools():
-    """Tool related commands"""
-    click.echo("V2GTP tools loaded successfully!")
+    """V2GTP tool related commands"""
 
 
 @v2gtp_tools.command(name="extract")
@@ -43,14 +42,16 @@ def extract(file: str):
 @click.option(
     "--packet-num",
     "-p",
-    name="pkt_num",
     default=0,
     show_default=True,
-    help="Packet number (from Wireshark, start from index=1) to decode",
+    help="Packet number to decode. Start from index=0. "
+    "If you want to inspect packet with number from Wireshark, "
+    "first subtract 1. If you want to inspect packet with number "
+    "from sniff command, then leave it as is.",
 )
-def decode(file: str, pkt_num: int):
+def decode(file: str, packet_num: int):
     """Decode V2GTP packet from pcap file"""
     v2gtp.decode_v2gtp_pkt_from_file(
         file=file,
-        packet_num=pkt_num,
+        packet_num=packet_num,
     )

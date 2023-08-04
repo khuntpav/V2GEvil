@@ -35,7 +35,8 @@ def main(debug: bool):
         handlers=[RichHandler(show_time=False, console=console)],
         level=(logging.WARNING if not debug else logging.DEBUG),
     )
-
+    if debug:
+        click.secho("DEBUG MODE is ON", fg="green")
     logger.debug("Main entry point for the CLI")
 
 

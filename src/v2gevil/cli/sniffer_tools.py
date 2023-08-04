@@ -2,21 +2,13 @@
 
 Calling logic from sniffer module.
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-# For type checking, only true in IDEs and tools for type checking.
-# It will not be used in runtime. Important to use: from __future__ import annotations
-if TYPE_CHECKING:
-    from scapy.packet import Packet
 import rich_click as click
 from ..sniffer import sniffer
 
 
 @click.group()
 def sniffer_tools():
-    """Tool related commands"""
-    pass
+    """Sniffer tool related commands"""
 
 
 @sniffer_tools.command(name="sniff")
@@ -61,7 +53,7 @@ def sniffer_tools():
 )
 @click.option(
     "--v2gtp/--no-only-v2gtp",
-    name="v2gtp_flag",
+    "v2gtp_flag",
     is_flag=True,
     default=True,
     show_default=True,
@@ -92,7 +84,6 @@ def sniff(
     "-f",
     default="./examples/pcap_files/Boards_connected_IPv6_and_localhost.pcapng",
     show_default=True,
-    name="file",
     help="File to analyze",
 )
 @click.option(
@@ -107,7 +98,10 @@ def sniff(
     "-p",
     default=0,
     show_default=True,
-    help="Packet number to inspect",
+    help="Packet number to inspect. Start from index=0. "
+    "If you want to inspect packet with number from Wireshark, "
+    "first subtract 1. If you want to inspect packet with number "
+    "from sniff command, then leave it as is.",
 )
 @click.option(
     "--show",
