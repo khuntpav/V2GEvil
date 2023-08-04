@@ -40,7 +40,7 @@ I had to move to use poetry.
 I use pyenv for managing python version and poetry as dependency resolver and virtual environment
 for the isolation from the system.
 
-### New Steps
+### New Steps - development
 #### 1. Clone this repository
 #### 2. cd to the repository
 #### 3. Use pyenv to manage python versions
@@ -58,10 +58,17 @@ V2GEvil:~/V2GEvil$ poetry shell
 (v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil
 ```
 
+### New Steps - production
+#### 1. Download .whl file from "dist" directory
+#### 2. Install using pip (pip3, python3 -m)
+```bash
+V2GEvil:~/V2GEvil$ pip install v2gevil-0.1.0-py3-none-any.whl
+```
+
 ## Usage
 ```bash
 # Name can be changed in pyproject.toml -> [tool.poetry.scripts]
-(V2GEvil) V2GEvil:~/V2GEvil$ v2gevil --help
+(v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil --help
 ```
 
 
