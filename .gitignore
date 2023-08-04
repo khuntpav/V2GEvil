@@ -3,7 +3,6 @@ docs/
 .config/
 examples/
 tests/
-dist/
 scripts/test.sh
 pyproject_poetry.toml
 requirements.txt
