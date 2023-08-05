@@ -87,13 +87,6 @@ def sniff(
     help="File to analyze",
 )
 @click.option(
-    "--ipv6/--no-only-ipv6",
-    "-6",
-    default=True,
-    show_default=True,
-    help="Sniff only IPv6 packets",
-)
-@click.option(
     "--packet-num",
     "-p",
     default=0,
@@ -127,6 +120,4 @@ def inspect(
     decode: bool,
 ):
     """Method for inspecting one packet with given number of the packet"""
-    sniffer.inspect(
-        file=file, ipv6=ipv6, packet_num=packet_num, show=show, decode=decode
-    )
+    sniffer.inspect(file=file, packet_num=packet_num, show=show, decode=decode)

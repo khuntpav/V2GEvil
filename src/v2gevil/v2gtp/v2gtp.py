@@ -17,6 +17,12 @@ from scapy.all import rdpcap
 
 logger = logging.getLogger(__name__)
 
+# TODO: Create class called V2GTP Packet, ihnerit from scapy.Packet
+# Rewrite .show() function to show only V2GTP header and payload
+# .decode_payload() function for decoding payload
+# @Packet.register_packet_class
+# class V2GTP(Packet):
+
 
 # Important: The communication between EV and EVSE is also include other IPv6 packets, not only V2GTP packets
 # So if we want whole communication, we need to sniff all IPv6 packets and then check them
@@ -61,6 +67,11 @@ def extract_v2gtp_pkts(packets):
     # TODO: Format output like src, dst, payload, etc. usefull for further analysis
 
 
+# Following methods with has_ prefix are here because of logging
+# Without logging, it's not needed to have them
+# And just use pkt.haslayer() instead of has_ functions
+# TODO: Probably it will be better to use pkt.haslayer() instead of has_ functions
+# TODO: Add rewrite haslayer functions to use logging for my class V2GTPPacket
 def has_raw_layer(pkt: Packet):
     """Check if packet has Raw layer. Added because check if Raw layer is in packet is used multiple times"""
 
@@ -126,9 +137,9 @@ def is_v2gtp_exi_msg(pkt: Packet):
     # So byte 3 and 4 is here 2. and 3. position
     payload_type = header[2:4]
     if payload_type == b"\x80\x01":
-        return True
+        return True, header, payload
 
-    return False
+    return False, None, None
 
 
 def is_v2gtp_sdp_request(pkt: Packet):
@@ -189,16 +200,7 @@ def is_v2gtp_reserved(pkt: Packet):
     return False
 
 
-payload_type_enum = {
-    "sdp_request",
-    "sdp_response",
-    "exi_message",
-    "reserved",
-    "manufacturer_use",
-}
-
-
-def v2gtp_payload_type(pkt: Packet):
+def check_v2gtp_payload_types(pkt: Packet):
     """Check V2GTP payload type, which is defined in the V2GTP PDU header"""
     # TODO: Add check using calling is_v2gtp_exi_msg function
     # Will return which payload type is in the packet from enum
@@ -219,8 +221,8 @@ def v2gtp_payload_type(pkt: Packet):
         payload_type = "reserved"
         return payload_type
 
-    logger.debug("Unknown payload type!")
-    return None
+    logger.warning("Unknown payload type!")
+    raise ValueError("Unknown payload type!")
 
 
 def parse_v2gtp_pkt(pkt: Packet):
@@ -229,14 +231,14 @@ def parse_v2gtp_pkt(pkt: Packet):
     Check if the packet has Raw layer, then check if it's V2GTP packet
     and then separate the V2GTP header from the payload
     """
+    logger.debug("Trying to parse packet as V2GTP packet...")
+
     if not has_v2gtp_layer(pkt):
         return None, None
 
     header = pkt[Raw].load[:8]
     payload = pkt[Raw].load[8:]
 
-    # print("V2GTP header: %s", header)
-    # print("V2GTP payload: %s", payload)
     logger.debug("V2GTP header: %s", header)
     logger.debug("V2GTP payload: %s", payload)
     logger.debug("V2GTP header hex(): %s", header.hex())
@@ -245,31 +247,17 @@ def parse_v2gtp_pkt(pkt: Packet):
     return header, payload
 
 
-# For now it will use V2GDecoder
-# V2GDecoder has to run as a web server
-# V2GDecoder source: https://github.com/FlUxIuS/V2Gdecoder
-# TODO: Change name of this function because it's decoding only EXI messages
-def decode_v2gtp_pkt(pkt):
-    """Decode V2GTP packet"""
+# TODO: Probably, it will be better to take payload (and maybe also header)
+#  as argument, not whole packet
+# TODO: is_ functions should return True or False, and also return header and payload
+# TODO: Later do from these methods, method for Class V2GTPPacket
 
-    if not has_raw_layer(pkt):
-        return
 
-    data = pkt[Raw].load
-
-    print("Parsing following raw data as V2GTP packet:")
-    linehexdump(data)
-
-    # Calling parse_v2gtp_pkt function to separate V2GTP header from payload
-    logger.debug("Trying to parse packet as V2GTP packet...")
-    header, payload = parse_v2gtp_pkt(pkt)
-    if header is None or payload is None:
-        return
-
-    logger.debug(f"Packet data: {data}")
-    logger.debug("Packet hex(): %s", data.hex())
-    logger.debug("Packet header: %s", header.hex())
-    logger.debug("Packet payload: %s", payload.hex())
+# For now use this function for decoding V2GTP packet in combination with
+# V2GDecoder.jar
+# source of V2GDecoder.jar:
+def decode_v2gtp_exi_msg(pkt: Packet):
+    """Decode V2GTP EXI message payload type"""
 
     # Sending separated payload from previous step to V2GDecoder
     # Important! V2GDecoder needs to be first started, before running this command
@@ -277,19 +265,128 @@ def decode_v2gtp_pkt(pkt):
     # java -jar V2GDecoder.jar -w
 
     # TODO: Try/catch for check if V2GDecoder is running
-
     # TODO: Maybe write my own decoder
-    logger.debug("Trying to decode packet as V2GTP packet...")
+    if not is_v2gtp_exi_msg(pkt):
+        logger.warning("Packet is not V2GTP EXI message!")
+        return
+
+    _, payload = parse_v2gtp_pkt(pkt)
+    # Unnecessary check if None,
+    # because it's already checked in is_v2gtp_exi_msg function
+    # IDE needs it, because it doesn't know that it's already checked
+    # cause hex() method is not defined for None
+    if payload is None:
+        return
+
+    print("Trying to decode packet as V2GTP EXI message...\n")
+    logger.debug("Trying to decode packet as V2GTP EXI message...")
+
     # TODO: add timeout for request
-    r = requests.post(
-        "http://localhost:9000", headers={"Format": "EXI"}, data=payload.hex()
+    try:
+        response = requests.post(
+            "http://localhost:9000",
+            headers={"Format": "EXI"},
+            data=payload.hex(),
+            timeout=10,
+        )
+        if response.status_code == 200:
+            print("Response from V2GDecoder:\n")
+            print(response.text)
+            print()
+        else:
+            logger.warning("Error: %s", response.status_code)
+            logger.warning("Error: %s", response.text)
+    except requests.exceptions.Timeout:
+        logger.error("Timeout! Is V2GDecoder running?")
+        exit(1)
+    except requests.exceptions.ConnectionError:
+        logger.error("Connection refused! Is V2GDecoder running?")
+        exit(1)
+
+
+def decode_v2gtp_sdp_request(pkt: Packet):
+    """Decode V2GTP SDP request payload type"""
+
+
+def decode_v2gtp_sdp_response(pkt: Packet):
+    """Decode V2GTP SDP response payload type"""
+
+
+def decode_v2gtp_manufacturer_use(pkt: Packet):
+    """Decode V2GTP Manufacturer Specific Use payload type"""
+    raise NotImplementedError(
+        "Depends on manufacturer docs, so it's not implemented yet! Exiting..."
     )
-    if r.status_code == 200:
-        print("Response from V2GDecoder:")
-        print(r.text)
-    else:
-        logger.warning("Error: %s", r.status_code)
-        logger.warning("Error: %s", r.text)
+
+
+def decode_v2gtp_reserved(pkt: Packet):
+    """Decode V2GTP Reserved payload type"""
+    raise NotImplementedError(
+        "Reserved payload type by ISO 15118-2:2014, "
+        "so it's not implemented yet! Exiting..."
+    )
+
+
+def print_v2gtp_pkt(pkt: Packet):
+    """Print V2GTP packet
+
+    Method for printing V2GTP packet.
+    It will be used as prn function in scapy sniff function.
+
+    Args:
+        pkt (Packet): V2GTP packet
+    """
+
+
+# TODO: Add some decoded_msg variable
+# Use decode_ function only for decoding, not for printing
+# Write new functions for printing
+def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
+    """Decode V2GTP packet as given payload type
+
+    Args:
+        pkt (Packet): Packet to decode
+        payload_type (str, optional): Payload type to decode. Defaults to "auto".
+
+    """
+    header, payload = parse_v2gtp_pkt(pkt)
+    if header is None or payload is None:
+        logger.warning(
+            "Packet doesn't have Raw layer! So, no decoding is possible!"
+        )
+        return
+
+    data = pkt[Raw].load
+    logger.debug("Packet data: %s\n", data)
+
+    print()
+    print("Trying to decode following raw data as V2GTP packet:")
+    linehexdump(data)
+    logger.debug("Packet data hex(): %s", data.hex())
+
+    print(100 * "-")
+    print(f"V2GTP header: {header.hex()}")
+    print(f"V2GTP payload: {payload.hex()}")
+    print(100 * "-")
+
+    if payload_type == "auto":
+        payload_type = check_v2gtp_payload_types(pkt)
+        logger.debug("Payload type: %s", payload_type)
+
+    match (payload_type):
+        case "exi_message":
+            decode_v2gtp_exi_msg(pkt)
+        case "sdp_request":
+            decode_v2gtp_sdp_request(pkt)
+        case "sdp_response":
+            decode_v2gtp_sdp_request(pkt)
+        case "manufacturer_specific_use":
+            decode_v2gtp_manufacturer_use(pkt)
+        case "reserved":
+            decode_v2gtp_reserved(pkt)
+        case _:
+            logger.warning("Unknown payload type!")
+            raise ValueError("Unknown payload type!")
 
 
 def decode_v2gtp_pkt_from_file(file: str, packet_num: int = 0):

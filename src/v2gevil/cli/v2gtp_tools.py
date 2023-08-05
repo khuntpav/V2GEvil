@@ -41,7 +41,7 @@ def extract(file: str):
 )
 @click.option(
     "--packet-num",
-    "-p",
+    "-pn",
     default=0,
     show_default=True,
     help="Packet number to decode. Start from index=0. "

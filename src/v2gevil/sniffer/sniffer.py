@@ -24,7 +24,11 @@ def sniff(
     ipv6: bool,
     v2gtp_flag: bool,
 ):
-    """Sniff packets live"""
+    """Sniff packets live or from pcap file
+
+    Only one of live or pcap can be True, not both at the same time.
+    Will call live_sniff or analyze method based on live or pcap flag.
+    """
     print("Sniffing packets...")
     logger.debug("Sniffing packets")
 
@@ -33,11 +37,20 @@ def sniff(
     elif pcap:
         analyze(file, ipv6)
     else:
-        print("Invalid mode!")
+        logger.error("Invalid option! Exiting...")
+        exit(1)
 
 
 def analyze(file: str, ipv6: bool, print_summary: bool = True):
-    """Analyze packets from pcap file"""
+    """Analyze packets from pcap file
+    Args:
+        file: pcap file to analyze
+        ipv6: True if only IPv6 packets should be analyzed
+        print_summary: True if only summary of packets should be printed
+
+    Returns:
+        Depending on print_summary flag, it will return None or filtered packets
+    """
 
     print("Analyzing packets from file %s", file)
     logger.debug("Analyzing packets")
@@ -63,25 +76,57 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
 
 # TODO: I have to find a way how to run poetry as root, because it needs root to sniff packets on interface
 def live_sniff(interface: str, ipv6: bool, v2gtp_flag: bool):
-    """Sniff packets live on interface"""
+    """Sniff packets live on interface
+
+    Args:
+        interface: Interface to sniff on
+        ipv6: True if only IPv6 packets should be sniffed
+        v2gtp_flag: True if only V2GTP packets should be sniffed
+
+    Returns:
+        None
+    """
 
     print("Sniffing packets live on interface %s", interface)
     logger.debug("Sniffing packets live on interface %s", interface)
     # Only IPv6 packets
     if ipv6:
+        logger.debug("Performing sniffing only for IPv6 packets")
         scapy_sniff(iface=interface, filter="ip6")
         if v2gtp_flag:
-            scapy_sniff(iface=interface, filter="ip6 and tcp port 15118")
-        # TODO: Write prn function to print only V2GTP packets
+            # TODO: Write prn function to print only V2GTP packets
+            logger.debug("Performing sniffing only for V2GTP packets")
+            scapy_sniff(
+                iface=interface,
+                filter="ip6 and tcp port 15118",
+                prn=v2gtp.print_v2gtp_pkt,
+            )
     # Both IPv4 and IPv6 packets, probably not needed in case of V2GTP
     else:
+        logger.debug("Performing sniffing for both IPv4 and IPv6 packets")
         scapy_sniff(iface=interface, filter="ip")
 
 
-def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
-    """Method for inspecting one packet with given number of the packet"""
+def inspect(file: str, packet_num: int, show: str, decode: bool):
+    """Method for inspecting one packet with given number of the packet.
 
-    packets = analyze(file, ipv6, print_summary=False)
+    Method will inspect packet with given number from pcap file.
+    It will show only given part of packet, depending on show flag.
+    If decode flag is True and show flag is "raw",
+    then it will try to decode packet as V2GTP packet.
+
+    Args:
+        file: pcap file from which to inspect packet
+        packet_num: Number of packet to inspect
+        show: Show only given part of packet
+            - all: Show all layers of packet
+            - raw: Show only Raw layer of packet
+                - If decode is True, then it will try to decode packet as V2GTP packet
+            - ipv6: Show only IPv6 layer of packet
+            - tcp: Show only TCP layer of packet
+    """
+
+    packets = analyze(file, ipv6=False, print_summary=False)
     if packets is None:
         logger.error("Packets are None!")
         exit(1)
@@ -111,7 +156,7 @@ def inspect(file: str, ipv6: bool, packet_num: int, show: str, decode: bool):
             print(pkt[Raw].fields)
             if decode is True:
                 logger.debug("Trying to decode packet as V2GTP packet...")
-                v2gtp.decode_v2gtp_pkt(pkt)
+                v2gtp.decode_v2gtp_pkt(pkt, payload_type="auto")
         return
     elif show == "ipv6":
         # Maybe change to if pkt.haslayer(IPv6): Don't know what is faster
