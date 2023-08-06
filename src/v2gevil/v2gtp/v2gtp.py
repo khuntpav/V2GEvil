@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 # .decode_payload() function for decoding payload
 # @Packet.register_packet_class
 # class V2GTP(Packet):
+# TODO: is_ functions should return True or False, and also return header and payload
+# TODO: Later do from is_methods, maybe also some decode methods
+#  => methods for Class V2GTPPacket
 
 
 # Important: The communication between EV and EVSE is also include other IPv6 packets, not only V2GTP packets
@@ -33,9 +36,6 @@ logger = logging.getLogger(__name__)
 # There are also UDP packets for SECC Discovery Protocol (SDP)
 # This function will extract only V2GTP packets from pcap file not whole IPv6 communication
 # To extract whole IPv6 communication, use function "analyze" from sniffer module
-# TODO: Add exctract_v2gtp_pkts_from_file function
-# Replace extract_v2gtp_pkts function with extract_v2gtp_pkts_from_file function
-# Add extract_v2gtp_pkts function, which will take packets as argument
 def extract_v2gtp_pkts_from_file(file: str):
     """Extract V2GTP packets from pcap file"""
     if os.path.isfile(file) is False:
@@ -47,25 +47,9 @@ def extract_v2gtp_pkts_from_file(file: str):
 def extract_v2gtp_pkts(packets):
     """Extract V2GTP packets"""
 
-    # Testing packets is following:
-    # 1. V2GTP SECC discovery request: packet_num=115,116
-    # 2. V2GTP SECC discovery response: packet_num=121,122
-    # 3. V2GTP V2GEXI request - supportedAppProtocolReq: packet_num=133
-    # 4. V2GTP V2GEXI response - supportedAppProtocolRes: packet_num=144
-    # 5. V2GTP V2GEXI(ISO1 in Wireshark) request - sessionSetupReq: packet_num=156
-    # Number of packet is from Wireshark start from 1, but in scapy it starts from 0, so we need to add 1
     for pkt in packets:
         if has_v2gtp_layer(pkt):
             pkt_num = packets.index(pkt) + 1
-            # +1 because index starts from 0, so make it same as in Wireshark
-            # print("Packet payload: %s" % payload_bytes)
-            # print("Packet show: %s", pkt.show())
-            # TODO: Not sure if it's needed to drop retransmission packets and DUP ACK packets
-            # Retrassmision detection for ex.: packet_num=594
-            # TCP DUP ACK detection for ex.: packet_num=598
-            # TODO: Detect if next packet has same sequence number as packet before
-            # Don't detect and don't drop anything
-
             print(
                 "Packet number: %s is V2GTP packet (Wireshark num.)", pkt_num
             )
@@ -113,10 +97,6 @@ def has_v2gtp_layer(pkt: Packet):
     # V2GTP uses IPv6 from my understanding of ISO15118-2:2014
     if not has_ipv6_layer(pkt):
         return False
-    # XOR in python cannot be applied to bytes, write function for it or use hardcoded values
-    # v2gtp_inverse_version = bytes(v2gtp_version ^ b'\xFF')
-    # XOR in python cannot be applied to bytes, write function for it or use hardcoded values
-    # v2gtp_inverse_version = bytes(v2gtp_version ^ b'\xFF')
 
     # TODO: In future check versions of V2GTP protocol, for now it's only version 1
     # V2GTP Header field: Protocol Version
@@ -251,10 +231,6 @@ def parse_v2gtp_pkt(pkt: Packet):
     logger.debug("V2GTP payload hex(): %s", payload.hex())
 
     return header, payload
-
-
-# TODO: is_ functions should return True or False, and also return header and payload
-# TODO: Later do from these methods => methods for Class V2GTPPacket
 
 
 # For now use this function for decoding V2GTP packet in combination with

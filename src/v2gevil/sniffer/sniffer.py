@@ -170,7 +170,6 @@ def inspect(file: str, packet_num: int, show: str, decode: bool):
         logger.error("Invalid show option! Exiting...")
         exit(1)
         # Maybe switch to raise ValueError instead of exit
-        # For now it will be exit because whole stack trace is long and not needed
         # raise ValueError("Invalid show option!")
 
     if show == "all":
@@ -188,8 +187,6 @@ def inspect(file: str, packet_num: int, show: str, decode: bool):
                 v2gtp.decode_v2gtp_pkt(pkt, payload_type="auto")
         return
     elif show == "ipv6":
-        # Maybe change to if pkt.haslayer(IPv6): Don't know what is faster
-        # or if IPv6 in pkt:
         if v2gtp.has_ipv6_layer(pkt):
             logger.debug("Packet has IPv6 layer!")
             pkt[IPv6].show()
