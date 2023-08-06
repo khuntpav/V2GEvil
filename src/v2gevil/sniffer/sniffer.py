@@ -4,7 +4,7 @@ This module is used for sniffing packets.
 It can sniff packets live on interface or analyze pcap file.
 """
 import logging
-
+import os.path
 from scapy.all import rdpcap
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw  # Used for PDU of packet
@@ -16,9 +16,21 @@ from ..v2gtp import v2gtp
 logger = logging.getLogger(__name__)
 
 
+# TODO: Think about to use pyshark instead of scapy for sniffing
+def pyshark_sniff():
+    """Sniff packets using pyshark.
+
+    It will be implemented in future, because I will need to check if pyshark
+    is faster / more reliable than scapy for sniffing packets.
+    It's also handy because it's wrapper around tshark, so i can use dissectors
+    from wireshark. I already use one dissector from wireshark for V2GTP packets.
+    """
+    raise NotImplementedError
+
+
+# Because pyshark is wrapper around tshark, so i can use dissectors from wireshark
 def sniff(
     live: bool,
-    pcap: bool,
     interface: str,
     file: str,
     ipv6: bool,
@@ -34,14 +46,18 @@ def sniff(
 
     if live:
         live_sniff(interface, ipv6, v2gtp_flag)
-    elif pcap:
-        analyze(file, ipv6)
     else:
-        logger.error("Invalid option! Exiting...")
-        exit(1)
+        analyze(
+            file=file, ipv6=ipv6, print_summary=True, v2gtp_flag=v2gtp_flag
+        )
 
 
-def analyze(file: str, ipv6: bool, print_summary: bool = True):
+def analyze(
+    file: str,
+    ipv6: bool,
+    print_summary: bool = True,
+    v2gtp_flag: bool = False,
+):
     """Analyze packets from pcap file
     Args:
         file: pcap file to analyze
@@ -52,10 +68,14 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
         Depending on print_summary flag, it will return None or filtered packets
     """
 
+    if not os.path.isfile(file):
+        logger.error("File %s does not exists!", file)
+        exit(1)
+
     print("Analyzing packets from file %s", file)
     logger.debug("Analyzing packets")
 
-    # TODO: Probable change to use scapy.sniff(offline=file)
+    # TODO: Probably, change to use scapy.sniff(offline=file), test speed of both
     packets = rdpcap(file)
     # Only IPv6 packets
     if ipv6:
@@ -64,17 +84,22 @@ def analyze(file: str, ipv6: bool, print_summary: bool = True):
         )
     # Both IPv4 and IPv6 packets
     else:
-        # TODO: Maybe change it to use like: --ipv4/--ipv6
         filtered_packets = packets
 
     if print_summary:
+        if v2gtp_flag:
+            print("Printing only V2GTP packets summary")
+            logger.debug("Printing only V2GTP packets summary")
+            filtered_packets = filtered_packets.filter(
+                lambda pkt: v2gtp.has_v2gtp_layer(pkt)
+            )
+            v2gtp.decode_v2gtp_packets(filtered_packets)
         filtered_packets.nsummary()
         return None
-    else:
-        return filtered_packets
+
+    return filtered_packets
 
 
-# TODO: I have to find a way how to run poetry as root, because it needs root to sniff packets on interface
 def live_sniff(interface: str, ipv6: bool, v2gtp_flag: bool):
     """Sniff packets live on interface
 
@@ -99,7 +124,7 @@ def live_sniff(interface: str, ipv6: bool, v2gtp_flag: bool):
             scapy_sniff(
                 iface=interface,
                 filter="ip6 and tcp port 15118",
-                prn=v2gtp.print_v2gtp_pkt,
+                prn=v2gtp.prn_v2gtp_pkt,
             )
     # Both IPv4 and IPv6 packets, probably not needed in case of V2GTP
     else:
@@ -126,6 +151,7 @@ def inspect(file: str, packet_num: int, show: str, decode: bool):
             - tcp: Show only TCP layer of packet
     """
 
+    # Check if isFile() if in analyze method
     packets = analyze(file, ipv6=False, print_summary=False)
     if packets is None:
         logger.error("Packets are None!")
@@ -156,6 +182,9 @@ def inspect(file: str, packet_num: int, show: str, decode: bool):
             print(pkt[Raw].fields)
             if decode is True:
                 logger.debug("Trying to decode packet as V2GTP packet...")
+                # TODO: implement print_decoded_v2gtp_pkt instead of decode_v2gtp_pkt
+                # in print function use decode_v2gtp_pkt, maybe just add
+                # another parameter to decode_v2gtp_pkt, something like print_decoded
                 v2gtp.decode_v2gtp_pkt(pkt, payload_type="auto")
         return
     elif show == "ipv6":
@@ -173,11 +202,3 @@ def inspect(file: str, packet_num: int, show: str, decode: bool):
             pkt[TCP].show()
             print(pkt[TCP].fields)
         return
-
-    # Testing packets is following:
-    # 1. V2GTP SECC discovery request: packet_num=115,116
-    # 2. V2GTP SECC discovery response: packet_num=121,122
-    # 3. V2GTP V2GEXI request - supportedAppProtocolReq: packet_num=133
-    # 4. V2GTP V2GEXI response - supportedAppProtocolRes: packet_num=144
-    # 5. V2GTP V2GEXI(ISO1 in Wireshark) request - sessionSetupReq: packet_num=156
-    # Number of packet is from Wireshark start from 1, but in scapy it starts from 0, so we need to add 1

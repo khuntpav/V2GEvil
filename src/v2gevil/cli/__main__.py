@@ -1,4 +1,8 @@
-# Desc: Main entry point for the CLI
+"""Main entry point for the CLI
+
+This module is as entry point for the CLI.
+It will call other modules and their commands.
+"""
 # TODO: Some option called auto, that will automatically
 #       load modules for automatic exploitation/evaluation
 

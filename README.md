@@ -67,12 +67,17 @@ V2GEvil:~/V2GEvil$ pip install v2gevil-0.1.0-py3-none-any.whl
 
 Sudo command has to be used for life sniffing.
 One possible approach is following:
-1. Download .whl file from "dist" directory
+1. Download .whl file from "dist" directory, cd to that directory
 2. Use: 'sudo pip3 install v2gevil-0.1.0-py3-none-any.whl'
 3. Run: 'sudo v2gevil --help'
 
 There are also other possibilities how it can be done.
-They will not be describe here.
+
+For uninstall as ***root*** and also dependencies, which were installed together with package v2gevil.
+I used following approach.
+1. sudo pip3 install pip-autoremove
+2. sudo pip-autoremove v2gevil
+
 
 ## Usage
 ```bash

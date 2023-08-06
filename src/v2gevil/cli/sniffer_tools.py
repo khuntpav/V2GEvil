@@ -13,22 +13,13 @@ def sniffer_tools():
 
 @sniffer_tools.command(name="sniff")
 @click.option(
-    "--live",
+    "--live/--pcap",
     "-l",
     is_flag=True,
     default=False,
     show_default=True,
-    help="Sniff live on interface",
+    help="Sniff live on interface / analyze pcap file",
 )
-@click.option(
-    "--pcap",
-    "-p",
-    is_flag=True,
-    default=False,
-    show_default=True,
-    help="Analyze pcap file",
-)
-# TODO: Maybe change it to use like: --live $name_of_interface or --pcap $name_of_file and use it instead of flags
 @click.option(
     "--interface",
     "-i",
@@ -61,16 +52,15 @@ def sniffer_tools():
 )
 def sniff(
     live: bool,
-    pcap: bool,
     interface: str,
     file: str,
     ipv6: bool,
     v2gtp_flag: bool,
 ):
     """Call method for Sniffing packets live on interface or analyze pcap file"""
+
     sniffer.sniff(
         live=live,
-        pcap=pcap,
         interface=interface,
         file=file,
         ipv6=ipv6,
@@ -114,10 +104,10 @@ def sniff(
 )
 def inspect(
     file: str,
-    ipv6: bool,
     packet_num: int,
     show: str,
     decode: bool,
 ):
+    # TODO: Check if file exists
     """Method for inspecting one packet with given number of the packet"""
     sniffer.inspect(file=file, packet_num=packet_num, show=show, decode=decode)

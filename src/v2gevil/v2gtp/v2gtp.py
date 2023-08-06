@@ -4,6 +4,7 @@ Here is the implementation of the V2GTP protocol,
 which is used for communication between EV and EVSE. 
 The implementation is based on ISO 15118-2:2014.
 """
+import os.path
 import logging
 import requests
 
@@ -37,6 +38,9 @@ logger = logging.getLogger(__name__)
 # Add extract_v2gtp_pkts function, which will take packets as argument
 def extract_v2gtp_pkts_from_file(file: str):
     """Extract V2GTP packets from pcap file"""
+    if os.path.isfile(file) is False:
+        logger.error("File doesn't exist!")
+        exit(1)
     extract_v2gtp_pkts(rdpcap(file))
 
 
@@ -60,11 +64,12 @@ def extract_v2gtp_pkts(packets):
             # Retrassmision detection for ex.: packet_num=594
             # TCP DUP ACK detection for ex.: packet_num=598
             # TODO: Detect if next packet has same sequence number as packet before
-            # TODO: In this case, it's retransmission packet or DUP ACK packet - I hope so
+            # Don't detect and don't drop anything
 
-            print("Packet number: %s is V2GTP packet", pkt_num)
-
-    # TODO: Format output like src, dst, payload, etc. usefull for further analysis
+            print(
+                "Packet number: %s is V2GTP packet (Wireshark num.)", pkt_num
+            )
+            # TODO: Format output like src, dst, payload, etc. usefull for further analysis
 
 
 # Following methods with has_ prefix are here because of logging
@@ -105,6 +110,9 @@ def has_v2gtp_layer(pkt: Packet):
     if not has_raw_layer(pkt):
         return False
 
+    # V2GTP uses IPv6 from my understanding of ISO15118-2:2014
+    if not has_ipv6_layer(pkt):
+        return False
     # XOR in python cannot be applied to bytes, write function for it or use hardcoded values
     # v2gtp_inverse_version = bytes(v2gtp_version ^ b'\xFF')
     # XOR in python cannot be applied to bytes, write function for it or use hardcoded values
@@ -137,9 +145,9 @@ def is_v2gtp_exi_msg(pkt: Packet):
     # So byte 3 and 4 is here 2. and 3. position
     payload_type = header[2:4]
     if payload_type == b"\x80\x01":
-        return True, header, payload
+        return True
 
-    return False, None, None
+    return False
 
 
 def is_v2gtp_sdp_request(pkt: Packet):
@@ -202,8 +210,6 @@ def is_v2gtp_reserved(pkt: Packet):
 
 def check_v2gtp_payload_types(pkt: Packet):
     """Check V2GTP payload type, which is defined in the V2GTP PDU header"""
-    # TODO: Add check using calling is_v2gtp_exi_msg function
-    # Will return which payload type is in the packet from enum
 
     if is_v2gtp_exi_msg(pkt):
         payload_type = "exi_message"
@@ -247,16 +253,14 @@ def parse_v2gtp_pkt(pkt: Packet):
     return header, payload
 
 
-# TODO: Probably, it will be better to take payload (and maybe also header)
-#  as argument, not whole packet
 # TODO: is_ functions should return True or False, and also return header and payload
-# TODO: Later do from these methods, method for Class V2GTPPacket
+# TODO: Later do from these methods => methods for Class V2GTPPacket
 
 
 # For now use this function for decoding V2GTP packet in combination with
 # V2GDecoder.jar
 # source of V2GDecoder.jar:
-def decode_v2gtp_exi_msg(pkt: Packet):
+def decode_v2gtp_exi_msg(pkt: Packet) -> tuple[bytes, bytes, str]:
     """Decode V2GTP EXI message payload type"""
 
     # Sending separated payload from previous step to V2GDecoder
@@ -264,24 +268,23 @@ def decode_v2gtp_exi_msg(pkt: Packet):
     # V2GDecoder will be run as a web server by following command:
     # java -jar V2GDecoder.jar -w
 
-    # TODO: Try/catch for check if V2GDecoder is running
     # TODO: Maybe write my own decoder
     if not is_v2gtp_exi_msg(pkt):
         logger.warning("Packet is not V2GTP EXI message!")
-        return
+        raise ValueError("Packet is not V2GTP EXI message!")
 
-    _, payload = parse_v2gtp_pkt(pkt)
+    header, payload = parse_v2gtp_pkt(pkt)
     # Unnecessary check if None,
     # because it's already checked in is_v2gtp_exi_msg function
     # IDE needs it, because it doesn't know that it's already checked
     # cause hex() method is not defined for None
-    if payload is None:
-        return
+    if header is None or payload is None:
+        logger.warning("Header or Payload is None!")
+        raise ValueError("Header or Payload is None!")
 
-    print("Trying to decode packet as V2GTP EXI message...\n")
+    # print("Trying to decode packet as V2GTP EXI message...\n")
     logger.debug("Trying to decode packet as V2GTP EXI message...")
 
-    # TODO: add timeout for request
     try:
         response = requests.post(
             "http://localhost:9000",
@@ -290,26 +293,35 @@ def decode_v2gtp_exi_msg(pkt: Packet):
             timeout=10,
         )
         if response.status_code == 200:
-            print("Response from V2GDecoder:\n")
-            print(response.text)
-            print()
+            logger.debug("Response from V2GDecoder:\n")
+            logger.debug(response.text)
         else:
             logger.warning("Error: %s", response.status_code)
             logger.warning("Error: %s", response.text)
     except requests.exceptions.Timeout:
         logger.error("Timeout! Is V2GDecoder running?")
         exit(1)
+        # raise requests.exceptions.Timeout("Timeout! Is V2GDecoder running?")
     except requests.exceptions.ConnectionError:
         logger.error("Connection refused! Is V2GDecoder running?")
         exit(1)
+        # raise requests.exceptions.ConnectionError(
+        #    "Connection refused! Is V2GDecoder running?"
+        # )
+
+    return header, payload, response.text
 
 
 def decode_v2gtp_sdp_request(pkt: Packet):
     """Decode V2GTP SDP request payload type"""
+    # TODO: Add decoding of SDP request / or some interpretation of it
+    raise NotImplementedError("Not implemented yet! Exiting...")
 
 
 def decode_v2gtp_sdp_response(pkt: Packet):
     """Decode V2GTP SDP response payload type"""
+    # TODO: Add decoding of SDP response / or some interpretation of it
+    raise NotImplementedError("Not implemented yet! Exiting...")
 
 
 def decode_v2gtp_manufacturer_use(pkt: Packet):
@@ -327,8 +339,8 @@ def decode_v2gtp_reserved(pkt: Packet):
     )
 
 
-def print_v2gtp_pkt(pkt: Packet):
-    """Print V2GTP packet
+def prn_v2gtp_pkt(pkt: Packet):
+    """Methon for printing V2GTP packet as prn function in scapy sniff function
 
     Method for printing V2GTP packet.
     It will be used as prn function in scapy sniff function.
@@ -337,10 +349,15 @@ def print_v2gtp_pkt(pkt: Packet):
         pkt (Packet): V2GTP packet
     """
 
+    header, payload = parse_v2gtp_pkt(pkt)
+    # It means that packet doesn't have v2gtp layer
+    if header is None or payload is None:
+        logger.debug("Packet doesn't have V2GTP layer!")
+        return f"Packet doesn't have V2GTP layer!\n{pkt.show()}"
 
-# TODO: Add some decoded_msg variable
-# Use decode_ function only for decoding, not for printing
-# Write new functions for printing
+    return f"V2GTP header: {header.hex()}\nV2GTP payload: {payload.hex()}"
+
+
 def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
     """Decode V2GTP packet as given payload type
 
@@ -373,9 +390,11 @@ def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
         payload_type = check_v2gtp_payload_types(pkt)
         logger.debug("Payload type: %s", payload_type)
 
+    # Otherwise Pylance will complain about variable is possibly unbound
+    decoded = None
     match (payload_type):
         case "exi_message":
-            decode_v2gtp_exi_msg(pkt)
+            _, _, decoded = decode_v2gtp_exi_msg(pkt)
         case "sdp_request":
             decode_v2gtp_sdp_request(pkt)
         case "sdp_response":
@@ -388,27 +407,28 @@ def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
             logger.warning("Unknown payload type!")
             raise ValueError("Unknown payload type!")
 
+    return decoded
+
 
 def decode_v2gtp_pkt_from_file(file: str, packet_num: int = 0):
     """Decode V2GTP packet from pcap file"""
-    # TODO: Add check if file exists
+
+    if os.path.isfile(file) is False:
+        logger.error("File doesn't exist!")
+        exit(1)
+
     packets = rdpcap(file)
     if 0 <= packet_num < len(packets):
         pkt = packets[packet_num]
     else:
         logger.error("Invalid packet number!")
         exit(1)
-    # Testing only #
-    # ---------------- #
-    debug = True
-    if debug is True:
-        packet_num = 133
-    # ---------------- #
 
     decode_v2gtp_pkt(pkt)
 
 
-def decode_v2gtp_packets(packets):
+# TODO: Resolve printing of decoded V2GTP packet based on print_flag
+def decode_v2gtp_packets(packets, print_flag: bool = False):
     """Decode V2GTP packets"""
     for pkt in packets:
         pkt_num = packets.index(pkt) + 1
