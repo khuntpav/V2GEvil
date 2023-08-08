@@ -5,7 +5,7 @@ Calling logic from V2GTP module.
 # from __future__ import annotations
 # from typing import TYPE_CHECKING
 import rich_click as click
-from v2gevil.v2gtp import v2gtp
+from ..v2gtp import v2gtp
 
 # For type checking, only true in IDEs and tools for type checking.
 # It will not be used in runtime. Important to use: from __future__ import annotations

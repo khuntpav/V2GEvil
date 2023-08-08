@@ -8,9 +8,11 @@ import os.path
 import logging
 import requests
 
+from scapy.plist import PacketList
 from scapy.packet import Packet
 from scapy.packet import Raw
 from scapy.layers.inet import TCP
+from scapy.layers.inet import UDP
 from scapy.layers.inet6 import IPv6
 from scapy.utils import linehexdump
 from scapy.all import rdpcap
@@ -44,16 +46,25 @@ def extract_v2gtp_pkts_from_file(file: str):
     extract_v2gtp_pkts(rdpcap(file))
 
 
-def extract_v2gtp_pkts(packets):
+def extract_v2gtp_pkts(packets) -> PacketList:
     """Extract V2GTP packets"""
 
+    filtered_packets = PacketList()
     for pkt in packets:
         if has_v2gtp_layer(pkt):
             pkt_num = packets.index(pkt) + 1
-            print(
-                "Packet number: %s is V2GTP packet (Wireshark num.)", pkt_num
+            logger.debug(
+                "Packet number: %s has no V2GTP layer (Wireshark num.)",
+                pkt_num,
             )
-            # TODO: Format output like src, dst, payload, etc. usefull for further analysis
+            filtered_packets.append(pkt)
+        else:
+            pkt_num = packets.index(pkt) + 1
+            logger.debug(
+                "Packet number: %s has no V2GTP layer (Wireshark num.)",
+                pkt_num,
+            )
+    return filtered_packets
 
 
 # Following methods with has_ prefix are here because of logging
@@ -64,19 +75,18 @@ def extract_v2gtp_pkts(packets):
 def has_raw_layer(pkt: Packet):
     """Check if packet has Raw layer. Added because check if Raw layer is in packet is used multiple times"""
 
-    if not pkt.haslayer(
-        Raw
-    ):  # or not Raw in pkt[Raw] what is more efficient/faster?
-        logger.warning("Packet doesn't have Raw layer!")
+    if not pkt.haslayer(Raw):
+        # or not Raw in pkt what is more efficient/faster?
+        logger.debug("Packet doesn't have Raw layer!")
         return False
-
+        # raise ValueError("Packet doesn't have Raw layer!")
     return True
 
 
 def has_tcp_layer(pkt: Packet):
     """Check if packet has TCP layer. Added because check if TCP layer is in packet is used multiple times"""
     if not pkt.haslayer(TCP):
-        logger.warning("Packet doesn't have TCP layer!")
+        logger.debug("Packet doesn't have TCP layer!")
         return False
     return True
 
@@ -84,18 +94,17 @@ def has_tcp_layer(pkt: Packet):
 def has_ipv6_layer(pkt: Packet):
     """Check if packet has IPv6 layer. Added because check if IPv6 layer is in packet is used multiple times"""
     if not pkt.haslayer(IPv6):
-        logger.warning("Packet doesn't have IPv6 layer!")
+        logger.debug("Packet doesn't have IPv6 layer!")
         return False
     return True
 
 
 def has_v2gtp_layer(pkt: Packet):
     """Check if packet has V2GTP layer."""
-    if not has_raw_layer(pkt):
-        return False
 
     # V2GTP uses IPv6 from my understanding of ISO15118-2:2014
-    if not has_ipv6_layer(pkt):
+    if not has_raw_layer(pkt) or not has_ipv6_layer(pkt):
+        logger.debug("Packet doesn't have Raw or IPv6 layer!")
         return False
 
     # TODO: In future check versions of V2GTP protocol, for now it's only version 1
@@ -217,7 +226,7 @@ def parse_v2gtp_pkt(pkt: Packet):
     Check if the packet has Raw layer, then check if it's V2GTP packet
     and then separate the V2GTP header from the payload
     """
-    logger.debug("Trying to parse packet as V2GTP packet...")
+    # logger.debug("Trying to parse packet as V2GTP packet...")
 
     if not has_v2gtp_layer(pkt):
         return None, None
@@ -225,18 +234,15 @@ def parse_v2gtp_pkt(pkt: Packet):
     header = pkt[Raw].load[:8]
     payload = pkt[Raw].load[8:]
 
-    logger.debug("V2GTP header: %s", header)
-    logger.debug("V2GTP payload: %s", payload)
-    logger.debug("V2GTP header hex(): %s", header.hex())
-    logger.debug("V2GTP payload hex(): %s", payload.hex())
-
     return header, payload
 
 
 # For now use this function for decoding V2GTP packet in combination with
 # V2GDecoder.jar
 # source of V2GDecoder.jar:
-def decode_v2gtp_exi_msg(pkt: Packet) -> tuple[bytes, bytes, str]:
+def decode_v2gtp_exi_msg(
+    pkt: Packet, header: bytes, payload: bytes
+) -> tuple[bytes, bytes, str]:
     """Decode V2GTP EXI message payload type"""
 
     # Sending separated payload from previous step to V2GDecoder
@@ -249,7 +255,6 @@ def decode_v2gtp_exi_msg(pkt: Packet) -> tuple[bytes, bytes, str]:
         logger.warning("Packet is not V2GTP EXI message!")
         raise ValueError("Packet is not V2GTP EXI message!")
 
-    header, payload = parse_v2gtp_pkt(pkt)
     # Unnecessary check if None,
     # because it's already checked in is_v2gtp_exi_msg function
     # IDE needs it, because it doesn't know that it's already checked
@@ -315,6 +320,38 @@ def decode_v2gtp_reserved(pkt: Packet):
     )
 
 
+def prn_decode_v2gtp_pkt(pkt: Packet):
+    """Method for printing decoded V2GTP packet
+    as prn function in scapy sniff function
+
+    Args:
+        pkt (Packet): scapy Packet
+    """
+
+    logger.debug("prn_decode_v2gtp_pkt function is called!")
+    header, payload = parse_v2gtp_pkt(pkt)
+    # It means that packet doesn't have v2gtp layer
+    if header is None or payload is None:
+        logger.debug("Packet doesn't have V2GTP layer!")
+        # msg = f"No VTGTP layer for this packet:\n{pkt.summary()}\n"
+        # f"{pkt[IPv6].src}:{pkt[TCP]} => {pkt[IPv6].dst}:{pkt[TCP].dport}\n"
+        return f"No VTGTP layer for this packet:\n\t{pkt.summary()}\n"
+
+    # TODO: Will be removed once the all decoding methods are implemented
+    try:
+        decoded = decode_v2gtp_pkt(pkt, payload_type="auto", print_flag=False)
+    except Exception as exception:
+        logger.warning("Error while decode packet: %s", exception)
+        return f"Error while decode packet!:\n\t{pkt.summary()}\n"
+
+    return (
+        f"Packet from: {pkt[IPv6].src} to {pkt[IPv6].dst}.\n\t"
+        f"V2GTP header: {header.hex()}\n\t"
+        f"V2GTP payload: {payload.hex()}\n\t"
+        f"Decoded V2GTP packet:\n\t{decoded}\n"
+    )
+
+
 def prn_v2gtp_pkt(pkt: Packet):
     """Methon for printing V2GTP packet as prn function in scapy sniff function
 
@@ -322,19 +359,35 @@ def prn_v2gtp_pkt(pkt: Packet):
     It will be used as prn function in scapy sniff function.
 
     Args:
-        pkt (Packet): V2GTP packet
+        pkt (Packet): scapy Packet
     """
 
     header, payload = parse_v2gtp_pkt(pkt)
     # It means that packet doesn't have v2gtp layer
     if header is None or payload is None:
         logger.debug("Packet doesn't have V2GTP layer!")
-        return f"Packet doesn't have V2GTP layer!\n{pkt.show()}"
+        return f"No VTGTP layer for this packet:\n\t{pkt.summary()}\n"
+    # Differentiate between UDP and TCP, because of ports printing
+    if UDP in pkt:
+        return (
+            f"Packet sent from: "
+            f"{pkt[IPv6].src}:{pkt[UDP].sport} => "
+            f"{pkt[IPv6].dst}:{pkt[UDP].dport}\n\t"
+            f"V2GTP header: {header.hex()}\n\t"
+            f"V2GTP payload: {payload.hex()}\n"
+        )
+    return (
+        f"Packet sent from: "
+        f"{pkt[IPv6].src}:{pkt[TCP].sport} => "
+        f"{pkt[IPv6].dst}:{pkt[TCP].dport}\n\t"
+        f"V2GTP header: {header.hex()}\n\t"
+        f"V2GTP payload: {payload.hex()}\n"
+    )
 
-    return f"V2GTP header: {header.hex()}\nV2GTP payload: {payload.hex()}"
 
-
-def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
+def decode_v2gtp_pkt(
+    pkt, payload_type: str = "auto", print_flag: bool = False
+):
     """Decode V2GTP packet as given payload type
 
     Args:
@@ -351,16 +404,17 @@ def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
 
     data = pkt[Raw].load
     logger.debug("Packet data: %s\n", data)
-
-    print()
-    print("Trying to decode following raw data as V2GTP packet:")
-    linehexdump(data)
     logger.debug("Packet data hex(): %s", data.hex())
+    logger.debug("V2GTP header: %s", header.hex())
+    logger.debug("V2GTP payload: %s", payload.hex())
 
-    print(100 * "-")
-    print(f"V2GTP header: {header.hex()}")
-    print(f"V2GTP payload: {payload.hex()}")
-    print(100 * "-")
+    if print_flag is True:
+        print()
+        print("Trying to decode following raw data as V2GTP packet:")
+        linehexdump(data)
+        print(100 * "-")
+        print(f"V2GTP header: {header.hex()}")
+        print(f"V2GTP payload: {payload.hex()}")
 
     if payload_type == "auto":
         payload_type = check_v2gtp_payload_types(pkt)
@@ -370,7 +424,9 @@ def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
     decoded = None
     match (payload_type):
         case "exi_message":
-            _, _, decoded = decode_v2gtp_exi_msg(pkt)
+            _, _, decoded = decode_v2gtp_exi_msg(
+                pkt=pkt, header=header, payload=payload
+            )
         case "sdp_request":
             decode_v2gtp_sdp_request(pkt)
         case "sdp_response":
@@ -383,6 +439,12 @@ def decode_v2gtp_pkt(pkt, payload_type: str = "auto"):
             logger.warning("Unknown payload type!")
             raise ValueError("Unknown payload type!")
 
+    if print_flag is True:
+        print(
+            f"Payload type is: {payload_type}\n"
+            f"Decoded V2GTP packet: \n {decoded}"
+        )
+        print(100 * "-")
     return decoded
 
 
@@ -413,4 +475,12 @@ def decode_v2gtp_packets(packets, print_flag: bool = False):
             "as V2GTP packet",
             pkt_num,
         )
-        decode_v2gtp_pkt(pkt)
+        if print_flag is True:
+            try:
+                decode_v2gtp_pkt(pkt, print_flag=print_flag)
+            except Exception as exception:
+                logger.warning(
+                    "Error while decode packet with number %s: %s",
+                    pkt_num,
+                    exception,
+                )

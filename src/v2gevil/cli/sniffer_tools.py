@@ -46,9 +46,17 @@ def sniffer_tools():
     "--v2gtp/--no-only-v2gtp",
     "v2gtp_flag",
     is_flag=True,
-    default=True,
+    default=False,
     show_default=True,
     help="Sniff only V2GTP packets",
+)
+@click.option(
+    "--decode/--no-decode",
+    "decode_flag",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Try to decode packet as V2GTP packet.",
 )
 def sniff(
     live: bool,
@@ -56,6 +64,7 @@ def sniff(
     file: str,
     ipv6: bool,
     v2gtp_flag: bool,
+    decode_flag: bool,
 ):
     """Call method for Sniffing packets live on interface or analyze pcap file"""
 
@@ -65,6 +74,7 @@ def sniff(
         file=file,
         ipv6=ipv6,
         v2gtp_flag=v2gtp_flag,
+        decode_flag=decode_flag,
     )
 
 
@@ -96,6 +106,7 @@ def sniff(
 @click.option(
     "--decode",
     "-d",
+    "decode_flag",
     is_flag=True,
     default=False,
     show_default=True,
@@ -106,8 +117,10 @@ def inspect(
     file: str,
     packet_num: int,
     show: str,
-    decode: bool,
+    decode_flag: bool,
 ):
     # TODO: Check if file exists
     """Method for inspecting one packet with given number of the packet"""
-    sniffer.inspect(file=file, packet_num=packet_num, show=show, decode=decode)
+    sniffer.inspect(
+        file=file, packet_num=packet_num, show=show, decode_flag=decode_flag
+    )
