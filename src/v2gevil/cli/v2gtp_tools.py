@@ -24,7 +24,7 @@ def v2gtp_tools():
     "-p",
     default="./examples/pcap_files/Boards_connected_IPv6_and_localhost.pcapng",
     show_default=True,
-    help="File to analyze",
+    help="File from which to extract V2GTP packets",
 )
 def extract(file: str):
     """Extract V2GTP packets from pcap file"""

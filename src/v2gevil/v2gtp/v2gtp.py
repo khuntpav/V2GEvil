@@ -43,7 +43,15 @@ def extract_v2gtp_pkts_from_file(file: str):
     if os.path.isfile(file) is False:
         logger.error("File doesn't exist!")
         exit(1)
-    extract_v2gtp_pkts(rdpcap(file))
+    filtered_packets = extract_v2gtp_pkts(rdpcap(file))
+    print(filtered_packets)
+    for pkt in filtered_packets:
+        # print(pkt.summary())
+        print(prn_v2gtp_pkt(pkt=pkt))
+        # print(prn_decode_v2gtp_pkt(pkt=pkt))
+    # TODO: Add saving of filtered packets to pcap file
+    # wrpcap("filtered_packets.pcap", filtered_packets)
+    # TODO: Add option for print summary or print v2gtp packet / decoded v2gtp packet
 
 
 def extract_v2gtp_pkts(packets) -> PacketList:
@@ -293,16 +301,81 @@ def decode_v2gtp_exi_msg(
     return header, payload, response.text
 
 
-def decode_v2gtp_sdp_request(pkt: Packet):
+def decode_v2gtp_sdp(security_byte: bytes, transport_proto_byte: bytes) -> str:
+    """Method for decode Security and Transport Protocol bytes from SDP"""
+    if security_byte == b"\x00":
+        security = "0x00 => secured with TLS"
+    elif security_byte == b"\x10":
+        security = "0x10 => No transport layer security"
+    elif (
+        b"\x01" <= security_byte <= b"\x0F"
+        or b"\x11" <= security_byte <= b"\xFF"
+    ):
+        logger.debug("Reserved payload type!")
+        security = "Reserved payload type!"
+    else:
+        logger.warning("Unknown security!")
+        security = "Unknown security! Not specified in ISO 15118-2:2014"
+        raise ValueError("Unknown security!")
+
+    # Check Transport Protocol byte
+    if transport_proto_byte == b"\x00":
+        transport_proto = "0x00 => TCP"
+    elif transport_proto_byte == b"\x01":
+        transport_proto = "0x10 => reserved for UDP"
+    elif (
+        b"\x01" <= transport_proto_byte <= b"\x0F"
+        or b"\x11" <= transport_proto_byte <= b"\xFF"
+    ):
+        logger.debug("Reserved payload type!")
+        transport_proto = "Reserved payload type!"
+    else:
+        logger.warning("Unknown transport layer!")
+        transport_proto = (
+            "Unknown transport layer! Not specified in ISO 15118-2:2014"
+        )
+        raise ValueError("Unknown transport layer!")
+
+    decoded = f"Security: {security}\n\t" f"Transport layer: {transport_proto}"
+
+    return decoded
+
+
+def decode_v2gtp_sdp_request(
+    pkt: Packet, header: bytes, payload: bytes
+) -> tuple[bytes, bytes, str]:
     """Decode V2GTP SDP request payload type"""
     # TODO: Add decoding of SDP request / or some interpretation of it
-    raise NotImplementedError("Not implemented yet! Exiting...")
+    # [0:1] => byte value [0] => otherwise  it's int
+    security_byte = payload[0:1]
+    transport_proto_byte = payload[1:2]
+    decoded_header = "SDP request:\n\t"
+    decoded_values = decode_v2gtp_sdp(security_byte, transport_proto_byte)
+    decoded = decoded_header + decoded_values
+    return header, payload, decoded
 
 
-def decode_v2gtp_sdp_response(pkt: Packet):
+def decode_v2gtp_sdp_response(
+    pkt: Packet, header: bytes, payload: bytes
+) -> tuple[bytes, bytes, str]:
     """Decode V2GTP SDP response payload type"""
     # TODO: Add decoding of SDP response / or some interpretation of it
-    raise NotImplementedError("Not implemented yet! Exiting...")
+    # raise NotImplementedError("Not implemented yet! Exiting...")
+    ip_address = payload[0:16]
+    port = payload[16:18]
+    port = int.from_bytes(port, byteorder="big")
+    security_byte = payload[18:19]
+    transport_proto_byte = payload[19:20]
+
+    decoded_header = "SDP response:\n\t"
+    decoded_values = (
+        f"IP address: {ip_address.hex()}\n\t"
+        f"Port: {port}\n\t"
+        f"{decode_v2gtp_sdp(security_byte, transport_proto_byte)}"
+    )
+    decoded = decoded_header + decoded_values
+
+    return header, payload, decoded
 
 
 def decode_v2gtp_manufacturer_use(pkt: Packet):
@@ -413,8 +486,7 @@ def decode_v2gtp_pkt(
         print("Trying to decode following raw data as V2GTP packet:")
         linehexdump(data)
         print(100 * "-")
-        print(f"V2GTP header: {header.hex()}")
-        print(f"V2GTP payload: {payload.hex()}")
+        print(prn_v2gtp_pkt(pkt=pkt))
 
     if payload_type == "auto":
         payload_type = check_v2gtp_payload_types(pkt)
@@ -428,9 +500,13 @@ def decode_v2gtp_pkt(
                 pkt=pkt, header=header, payload=payload
             )
         case "sdp_request":
-            decode_v2gtp_sdp_request(pkt)
+            _, _, decoded = decode_v2gtp_sdp_request(
+                pkt=pkt, header=header, payload=payload
+            )
         case "sdp_response":
-            decode_v2gtp_sdp_request(pkt)
+            _, _, decoded = decode_v2gtp_sdp_response(
+                pkt=pkt, header=header, payload=payload
+            )
         case "manufacturer_specific_use":
             decode_v2gtp_manufacturer_use(pkt)
         case "reserved":
@@ -462,7 +538,7 @@ def decode_v2gtp_pkt_from_file(file: str, packet_num: int = 0):
         logger.error("Invalid packet number!")
         exit(1)
 
-    decode_v2gtp_pkt(pkt)
+    decode_v2gtp_pkt(pkt, print_flag=True)
 
 
 # TODO: Resolve printing of decoded V2GTP packet based on print_flag
@@ -477,7 +553,7 @@ def decode_v2gtp_packets(packets, print_flag: bool = False):
         )
         if print_flag is True:
             try:
-                decode_v2gtp_pkt(pkt, print_flag=print_flag)
+                decode_v2gtp_pkt(pkt, print_flag=True)
             except Exception as exception:
                 logger.warning(
                     "Error while decode packet with number %s: %s",

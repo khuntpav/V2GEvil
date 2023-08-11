@@ -105,6 +105,8 @@ def analyze(
             filtered_packets = v2gtp.extract_v2gtp_pkts(
                 packets=filtered_packets
             )
+            # TODO maybe add also different print function for v2gtp packets
+            # like it's done in live_sniff
             # v2gtp.decode_v2gtp_packets(filtered_packets, print_flag=True)
             # filtered_packets.nsummary()
         if decode_flag:

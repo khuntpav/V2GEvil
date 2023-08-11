@@ -101,7 +101,8 @@ def sniff(
     "-s",
     default="all",
     show_default=True,
-    help="Show only given part of packet",
+    help="Show only given part of packet. "
+    "Possible values: all, raw, ipv6, tcp.",
 )
 @click.option(
     "--decode",
@@ -110,7 +111,8 @@ def sniff(
     is_flag=True,
     default=False,
     show_default=True,
-    help="Try to decode packet as V2GTP packet."
+    help="Try to decode packet as V2GTP packet. "
+    "Mandatory flag for decode is show=raw."
     "Only if raw layer is present, otherwise it will fail.",
 )
 def inspect(

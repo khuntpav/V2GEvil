@@ -85,6 +85,34 @@ I used following approach.
 (v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil --help
 ```
 
+1. v2gevil v2gtp-tools extract
+2. v2gevil v2gtp-tools decode
+   1. --file: decode from given file
+   2. --packet-num: num for the packet which should be decoded
+   - Example:  v2gevil v2gtp-tools decode --packet-num 121
+3. v2gevil sniffer-tools inspect
+   1. --file inspect packet from given file
+   2. --packet-num: num for the packet which should be inspected
+   3. --show: Show only given part of packet, all, raw, ipv6, tcp
+   4. --decode: decode as V2GTP packet, --show raw is mandatory for this flag
+    - Example1: v2gevil sniffer-tools inspect --packet-num 132
+    - Example2: v2gevil sniffer-tools inspect --packet-num 132 --show raw --decode
+4. v2gevil sniffer-tools sniff --pcap
+   1. --live/--pcap: perform live sniffing or from file -> print summary for each packet
+   2. --ipv6: print packet summary for each IPv6 packet
+   3. --v2gtp print packet summary for each V2GTP packet
+   4. --decode decode each packets as V2GTP packet. Good to combine with --v2gtp
+    - Example1: v2gevil sniffer-tools sniff --pcap
+5. v2gevil sniffer-tools sniff --live
+   1. --interface: interface to sniff on
+   2. --ivp6: sniff only IPv6 packets, print packet summary for each packet
+   3. --v2gtp: print for each packet V2GTP summary: header, payload; requirement is --ipv6,
+   4. --decode: decode each packet V2GTP requirement is --ipv6, do not combine with --v2gtp flag, in that case only --v2gtp will be applied
+    - Example1: v2gevil sniffer-tools sniff --live --ipv6 --v2gtp
+    - Example2: v2gevil sniffer-tools sniff --live --ipv6 --decode
+
+
+
 
 ## Documentation
 I will use [mkdocs materials](https://squidfunk.github.io/mkdocs-material/getting-started/) for the documentation purposes.
