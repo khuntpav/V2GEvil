@@ -2,7 +2,7 @@
 name = "V2GEvil"
 version = "0.1.0"
 description = ""
-authors = ["khuntpav <p.smoulin@seznam.cz>"]
+authors = ["khuntpav <khuntpav@fit.cvut.cz>"]
 readme = "README.md"
 packages = [{include = "src/v2gevil"}]
 

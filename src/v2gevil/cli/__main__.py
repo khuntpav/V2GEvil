@@ -13,6 +13,8 @@ from rich.logging import RichHandler
 from .v2gtp_tools import v2gtp_tools
 from .sniffer_tools import sniffer_tools
 from .sender_tools import sender_tools
+from .station_tools import station_tools
+from .car_tools import car_tools
 from .console import console
 
 logger = logging.getLogger(__name__)
@@ -53,3 +55,5 @@ def banner():
 main.add_command(sniffer_tools)
 main.add_command(v2gtp_tools)
 main.add_command(sender_tools)
+main.add_command(station_tools)
+main.add_command(car_tools)
