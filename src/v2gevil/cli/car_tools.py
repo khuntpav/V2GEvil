@@ -26,6 +26,6 @@ def car_tools():
     show_default=True,
     help="Mode to run car in. Options: normal, ...TODO",
 )
-def start_car():
+def start_car(interface: str = "eth_car", mode: str = "normal"):
     """Start car."""
-    car.start()
+    car.start(interface=interface)

@@ -28,4 +28,4 @@ def station_tools():
 )
 def start_station(interface: str, mode: str):
     """Start station."""
-    station.start()
+    station.start(interface=interface)
