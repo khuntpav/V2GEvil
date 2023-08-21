@@ -20,6 +20,51 @@ from scapy.all import rdpcap
 
 logger = logging.getLogger(__name__)
 
+
+class V2GTP_Message:
+    """V2GTP message class.
+
+    Class represents V2GTP message.
+    Constructor takes V2GTP message as bytes.
+    Contains header and payload in bytes.
+    """
+
+    def __init__(self, message: bytes):
+        """Initialize V2GTP message."""
+        self.message = message
+        self.header = self.message[:8]
+        self.payload = self.message[8:]
+
+    def create_message(self, payload: bytes, type: str) -> bytes:
+        """Create V2GTP message."""
+        self.message = b""
+
+        return self.message
+
+    def get_payload(self) -> bytes:
+        """Get payload."""
+        return self.payload
+
+    def get_header(self) -> bytes:
+        """Get header."""
+        return self.header
+
+    def v2gtp_exi_message(self, payload: bytes) -> bytes:
+        """Create V2GTP EXI message."""
+        self.message = b""
+        return self.message
+
+    def sdp_message(self, payload: bytes) -> bytes:
+        """Create SDP message."""
+        self.message = b""
+        return self.message
+
+    def get_xml(self) -> str:
+        """Get XML."""
+        # TODO: Add EXI to XML conversion
+        return ""
+
+
 # TODO: Create class called V2GTP Packet, ihnerit from scapy.Packet
 # Rewrite .show() function to show only V2GTP header and payload
 # .decode_payload() function for decoding payload
