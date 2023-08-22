@@ -25,9 +25,13 @@ def start(interface: str = "eth_car"):
     # After the IP address is assigned to the interface
     # For now, the IP address is assigned manually
     # Or automatically from bash script: config_boards.sh
+    testing_tcp_timeout = False
 
-    start_sdp_client(interface=interface)
-    start_tcp_client()
+    if testing_tcp_timeout:
+        start_sdp_client(interface=interface)
+    else:
+        start_sdp_client(interface=interface)
+        start_tcp_client()
 
 
 def start_sdp_client(interface: str = "eth_car"):

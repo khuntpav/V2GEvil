@@ -33,6 +33,7 @@ class ServerManager:
         self.ipv6_address = "fe80::d237:45ff:fe88:b12b"  # Hardcoded for now
         self.udp_stop_flag = asyncio.Event()
         self.tcp_continue_flag = asyncio.Event()
+        self.tcp_connection = None
 
     async def start(self):
         """Start station.
@@ -110,29 +111,27 @@ class ServerManager:
         )
 
         try:
-            # Wait for UDP packets, later it will be possible to stop the SDP
-            # server after TCP connection is established
             while not self.udp_stop_flag.is_set():
                 print("SDP server is running in while loop")
                 data, addr = sdp_socket.recvfrom(1024)
                 print(f"Received {len(data)} bytes from {addr}: {data}")
 
-                # Construct a response message
-                # TODO: Add SDP response message from V2GTP
-                # Response should depend on the received message
-                # For now just send back:
-                #   IPv6 address for TCP connection
-                #   Port number for TCP connection
-                #   TLS support => no TLS
-                #   V2G version => 2.0
-                # Send the response message back to the sender
                 response_message = b"SDP response from server"
                 sdp_socket.sendto(response_message, addr)
-                await self.tcp_server()
-            print("SDP server stopped")
-            sdp_socket.close()
+
+                if not self.tcp_continue_flag.is_set():
+                    try:
+                        # TODO: Add option, user can set timeout in seconds
+                        await asyncio.wait_for(self.tcp_server(), timeout=5)
+                        print("TCP server connection established")
+                        # Process TCP data without timeout
+                        await self.v2gtp_comm_handler()
+                    except asyncio.TimeoutError:
+                        print("TCP server connection timeout")
         except KeyboardInterrupt:
             print("Stopping SDP server by KeyboardInterrupt")
+        finally:
+            print("SDP server stopped")
             sdp_socket.close()
 
     async def tcp_server(self):
@@ -153,31 +152,29 @@ class ServerManager:
                 V2G_DST_TCP_DATA.start, V2G_DST_TCP_DATA.stop
             )
             link_local_address = "fe80::d237:45ff:fe88:b12b"
+            # TODO: Add variable to class for tcp_port
+            # Add that to sdp_server cause it will inform the EVCC on which
+            # port to connect to the TCP server
 
             # Avoid bind() exception: OSError: [Errno 48] Address already in use
             server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server_sock.bind(
-                ("fe80::d237:45ff:fe88:b12b", 15119, 0, interface_index)
-            )
+            server_sock.bind((link_local_address, 15119, 0, interface_index))
             server_sock.listen()
             # This will accept only one client
             #  server doesn't accept new connections for each iteration of the loop
             # if i want that i should use while True and accept() in the loop
 
-            conn, addr = server_sock.accept()
-            with conn:
-                print("Connected by: ", addr)
-                self.udp_stop_flag.set()
-                while True:
-                    data = conn.recv(1024)
-                    if not data:
-                        break
-                    print(f"Received from: {addr} data: {data}")
-                    # Send response
-                    response_message = b"Hello from Server"
-                    conn.sendall(response_message)
-            # This is to run SDP server again after TCP connection is close
-            self.udp_stop_flag.clear()
+            server_sock.setblocking(False)
+            while not self.tcp_continue_flag.is_set():
+                try:
+                    conn, addr = server_sock.accept()
+                    print("Connected by: ", addr)
+                    self.tcp_continue_flag.set()
+                    self.tcp_connection = conn
+                except BlockingIOError:
+                    # No incoming connection, perform other tasks or wait
+                    await asyncio.sleep(0.1)  # Non-blocking wait
+            print("TCP server loop ended after connection established")
 
     def tls_server(self):
         """Run TLS server.
@@ -187,11 +184,28 @@ class ServerManager:
         and wait for V2G communication session.
         """
 
-    def v2gtp_comm_handler(self):
+    async def v2gtp_comm_handler(self):
         """Handle V2GTP communication.
 
         After V2G communication session is established, handle V2GTP communication.
         """
+        if self.tcp_connection is None:
+            return
+
+        conn = self.tcp_connection
+        try:
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    break
+                print(f"Received from client: {data}")
+                response_message = b"Hello from Server"
+                conn.sendall(response_message)
+        except Exception as error:
+            print(f"Error processing TCP data: {error}")
+        finally:
+            self.tcp_continue_flag.clear()
+            conn.close()  # Close the connection when done
 
 
 def start_async(interface: str = "eth_station"):
