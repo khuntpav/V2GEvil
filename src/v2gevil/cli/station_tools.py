@@ -4,6 +4,7 @@ Calling logic from car module.
 """
 import rich_click as click
 from ..station import station
+from ..station import station_scapy
 
 
 @click.group()
@@ -20,12 +21,15 @@ def station_tools():
     help="Interface to run station on",
 )
 @click.option(
-    "--mode",
-    "-m",
-    default="normal",
+    "--async/--manual",
+    "async_flag",
+    default=True,
     show_default=True,
-    help="Mode to run station in. Options: normal, ...TODO",
+    help="Run station in async mode or manual mode",
 )
-def start_station(interface: str, mode: str):
+def start_station(interface: str, async_flag: bool):
     """Start station."""
-    station.start(interface=interface)
+    if async_flag:
+        station.start_async(interface=interface)
+    else:
+        station.start(interface=interface)

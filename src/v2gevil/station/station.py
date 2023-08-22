@@ -1,20 +1,232 @@
-"""Module for the station implementation."""
+"""Module for station implementation.
+
+This implementation will be done by using Scapy library."""
+
 
 import logging
 import socket
 import struct
+import asyncio
+import random
 
 logger = logging.getLogger(__name__)
 
+# Port number for SDP server
+V2G_UDP_SDP_SERVER = 15118
+# Possible ports for SDP client
+V2G_UDP_SDP_CLIENT = range(49152, 65535)
+# Possible ports for TCP server/client
+V2G_DST_TCP_DATA = range(49152, 65535)
+V2G_SRC_TCP_DATA = V2G_DST_TCP_DATA
+
+
+class ServerManager:
+    """
+    Class for managing the servers
+
+    Class for managing the servers (SDP, TCP, TLS)
+    """
+
+    def __init__(self, interface: str = "eth_station"):
+        """Initialize Server Manager."""
+        self.interface = interface
+        self.ipv6_address = "fe80::d237:45ff:fe88:b12b"  # Hardcoded for now
+        self.udp_stop_flag = asyncio.Event()
+        self.tcp_continue_flag = asyncio.Event()
+
+    async def start(self):
+        """Start station.
+
+        To handle stop of SDP server after TCP connection is established,
+        it's necessary to use threading (or maybe asyncio)."""
+
+        # After Data-Link is established
+        udp_task = asyncio.create_task(self.sdp_server())
+        await udp_task
+
+        # OR
+        # udp_task = asyncio.create_task(self.sdp_server())
+        # tcp_task = asyncio.create_task(self.tcp_server())
+        # await asyncio.gather(udp_task, tcp_task)
+
+    async def sdp_server(self):
+        """Start SDP server.
+
+        The SDP server is started on UDP (multicast) port 15118 (defined in ISO15118-2).
+        Should accepts UDP packets with a local-link IP multicast destination address
+        """
+        print("SDP server started")
+
+        # Create a UDP socket
+        sdp_socket = socket.socket(
+            family=socket.AF_INET6, type=socket.SOCK_DGRAM
+        )
+        # Get interface index
+        interface_index = socket.if_nametoindex(self.interface)
+        # Bind to the multicast group address
+        port = V2G_UDP_SDP_SERVER
+
+        # Bind for IPv6 should use 4-tuple (host, port, flowinfo, scopeid)
+        # For AF_INET6 address family, a four-tuple (host, port, flowinfo, scope_id)
+        # is used, where flowinfo and scope_id represent the sin6_flowinfo
+        # and sin6_scope_id members in struct sockaddr_in6 in C
+        # From getaddrinfo() documentation:
+        # The function returns a list of 5-tuples with the following structure:
+        # (family, type, proto, canonname, sockaddr), interesting is sockaddr
+        # sockaddr is a tuple describing a socket address, whose format depends
+        # on the returned family (a (address, port) 2-tuple for AF_INET,
+        # a (address, port, flowinfo, scope_id) 4-tuple for AF_INET6),
+        # and is meant to be passed to the socket.connect() method or bind()
+        # The scope_id is a number that identifies the interface in a scope.
+        # can be obtained from if_nametoindex() or from the ip link show in linux
+        multicast_address = "ff02::1"
+        logger.debug(
+            socket.getaddrinfo(
+                multicast_address,
+                port,
+                socket.AF_INET6,
+                socket.SOCK_DGRAM,
+                socket.SOL_UDP,
+            )
+        )
+        # Bind socket to multicast_address
+        sdp_socket.bind((multicast_address, port, 0, interface_index))
+
+        logger.debug(sdp_socket.getsockname())
+
+        # Without this was not possible to listen on multicast
+        multicast_addr_bin = socket.inet_pton(
+            socket.AF_INET6, multicast_address
+        )
+        mreq = multicast_addr_bin + struct.pack("I", interface_index)
+        sdp_socket.setsockopt(
+            socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq
+        )
+
+        logger.debug(
+            "Starting SDP server, interface: %s interface-index: %s",
+            self.interface,
+            socket.if_nametoindex(self.interface),
+        )
+
+        try:
+            # Wait for UDP packets, later it will be possible to stop the SDP
+            # server after TCP connection is established
+            while not self.udp_stop_flag.is_set():
+                print("SDP server is running in while loop")
+                data, addr = sdp_socket.recvfrom(1024)
+                print(f"Received {len(data)} bytes from {addr}: {data}")
+
+                # Construct a response message
+                # TODO: Add SDP response message from V2GTP
+                # Response should depend on the received message
+                # For now just send back:
+                #   IPv6 address for TCP connection
+                #   Port number for TCP connection
+                #   TLS support => no TLS
+                #   V2G version => 2.0
+                # Send the response message back to the sender
+                response_message = b"SDP response from server"
+                sdp_socket.sendto(response_message, addr)
+                await self.tcp_server()
+            print("SDP server stopped")
+            sdp_socket.close()
+        except KeyboardInterrupt:
+            print("Stopping SDP server by KeyboardInterrupt")
+            sdp_socket.close()
+
+    async def tcp_server(self):
+        """Run TCP server.
+
+        Wait for connection from EVCC.
+        After connection is established, stop the SDP server
+        and wait for V2G communication session
+        """
+        print("TCP server started")
+        with socket.socket(
+            family=socket.AF_INET6, type=socket.SOCK_STREAM
+        ) as server_sock:
+            # Get interface index
+            interface_index = socket.if_nametoindex(self.interface)
+            # Bind to the multicast group address
+            port = random.randint(
+                V2G_DST_TCP_DATA.start, V2G_DST_TCP_DATA.stop
+            )
+            link_local_address = "fe80::d237:45ff:fe88:b12b"
+
+            # Avoid bind() exception: OSError: [Errno 48] Address already in use
+            server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_sock.bind(
+                ("fe80::d237:45ff:fe88:b12b", 15119, 0, interface_index)
+            )
+            server_sock.listen()
+            # This will accept only one client
+            #  server doesn't accept new connections for each iteration of the loop
+            # if i want that i should use while True and accept() in the loop
+
+            conn, addr = server_sock.accept()
+            with conn:
+                print("Connected by: ", addr)
+                self.udp_stop_flag.set()
+                while True:
+                    data = conn.recv(1024)
+                    if not data:
+                        break
+                    print(f"Received from: {addr} data: {data}")
+                    # Send response
+                    response_message = b"Hello from Server"
+                    conn.sendall(response_message)
+            # This is to run SDP server again after TCP connection is close
+            self.udp_stop_flag.clear()
+
+    def tls_server(self):
+        """Run TLS server.
+
+        Wait for connection from EVCC.
+        After connection is established, stop the SDP server
+        and wait for V2G communication session.
+        """
+
+    def v2gtp_comm_handler(self):
+        """Handle V2GTP communication.
+
+        After V2G communication session is established, handle V2GTP communication.
+        """
+
+
+def start_async(interface: str = "eth_station"):
+    """Start station.
+
+    To handle stop of SDP server after TCP connection is established,
+    it's necessary to use threading (or maybe asyncio)."""
+
+    manager = ServerManager(interface=interface)
+    asyncio.run(manager.start())
+
 
 def start(interface: str = "eth_station"):
-    """Start station."""
+    """
+    Start station in manual mode. There is no use of asyncio.
+
+    This method suppose normal flow of the V2G communication.
+    Sequentially:
+        => SDP server is started
+        => SDP request is received
+        => SDP response is sent
+        => SDP server is stopped
+        => TCP server waits for connection
+        => TCP connection is established on request from EVCC
+        => V2G communication session is established
+    """
+
     # After Data-Link is established
     # TODO: SECC shall configure the IP address of the station (static of dynamic)
 
     # After the IP address is assigned, the station should start the SDP server
-    # TODO: Start SDP
-    start_sdp_server(interface=interface)
+    # TODO: Start SDP server thread
+
+    sdp_server(interface=interface)
+
     # TODO: After SDP server started successfully, wait for TCP/TLS connection
     # initialization depending on the SDP response message
     # Wait until the TCP/TLS connection is established
@@ -23,10 +235,10 @@ def start(interface: str = "eth_station"):
     # of the V2G communication session
 
     # After TLS/TCP connection is established, SECC can stop SDP server
-    stop_sdp_server()
+    # stop_sdp_server()
 
 
-def start_sdp_server(interface: str = "eth_station"):
+def sdp_server(interface: str = "eth_station"):
     """Start SDP server.
 
     The SDP server is started on UDP (multicast) port 15118 (defined in ISO15118-2).
@@ -55,8 +267,7 @@ def start_sdp_server(interface: str = "eth_station"):
     # )
 
     # Bind to the multicast group address
-    V2G_UDP_SDP_SERVER_PORT = 15118
-    port = V2G_UDP_SDP_SERVER_PORT
+    port = V2G_UDP_SDP_SERVER
 
     # Bind for IPv6 should use 4-tuple (host, port, flowinfo, scopeid)
     # For AF_INET6 address family, a four-tuple (host, port, flowinfo, scope_id)
@@ -83,9 +294,7 @@ def start_sdp_server(interface: str = "eth_station"):
             socket.SOL_UDP,
         )
     )
-    # Cannot bind to link-local address, TODO: why?
-    # OSError: [Errno 99] Cannot assign requested address => multicast_addr
-    # do with multicast or "::" (any address) or ""
+
     sockaddr = socket.getaddrinfo(
         multicast_address,
         port,
@@ -119,12 +328,17 @@ def start_sdp_server(interface: str = "eth_station"):
     try:
         while True:
             data, addr = SDP_socket.recvfrom(1024)
-            print(f"Received {len(data)} bytes from {addr}: {data.decode()}")
-            # Construct a response message
-            response_message = b"Response to " + data
+            # TODO: Check if the received message is SDP request message
+            # For now just check if the message is not empty
+            if data:
+                print(f"Received {len(data)} bytes from {addr}: {data}")
+                print(f"Received from: {addr} data: {data}")
+                # Construct a response message
+                response_message = b"Response to " + data
 
-            # Send the response message back to the sender
-            SDP_socket.sendto(response_message, addr)
+                # Send the response message back to the sender
+                SDP_socket.sendto(response_message, addr)
+                break
 
     except KeyboardInterrupt:
         print("Stopping SDP server")
@@ -171,7 +385,3 @@ def start_sdp_server(interface: str = "eth_station"):
     # ip_address = "fe80::d237:45ff:fe88:b12b"
     # SDP_socket.bind((ip_address, V2G_UDP_SDP_SERVER_PORT))
     # It's possible to bind single socket to multiple host addresses
-
-
-def stop_sdp_server():
-    """Stop SDP server."""
