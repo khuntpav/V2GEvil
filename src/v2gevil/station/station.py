@@ -22,10 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 class ServerManager:
-    """
-    Class for managing the servers
+    """Class for managing the servers
 
     Class for managing the servers (SDP, TCP, TLS)
+
+    Attributes:
+        interface: Interface of the station
+        ipv6_address: IPv6 address of the station, link-local address
+        protocol: Protocol to use for V2GTP communication, TCP or UDP
+        sdp_port: Port for SDP server
+        tcp_port: Port for TCP server
+        tls_flag: Flag for TLS communication
+        accept_security: Flag for accepting security from EVCC
+        udp_stop_flag: Flag for stopping SDP server
+        tcp_continue_flag: Flag for continuing TCP server
+        tcp_connection: TCP connection, used by V2GTP communication handler
+
     """
 
     def __init__(
@@ -41,15 +53,30 @@ class ServerManager:
             )
         ),
         tls_flag: bool = False,
+        accept_security: bool = False,
     ):
-        """Initialize Server Manager."""
+        """
+        Initialize Server Manager.
+
+        Args:
+            interface: Interface of the station
+            ipv6_address: IPv6 address of the station, link-local address
+            protocol: Protocol to use for V2GTP communication, TCP or UDP
+            sdp_port: Port for SDP server
+            tcp_port: Port for TCP server
+            tls_flag: Flag for TLS communication
+            accept_security: Flag for accepting security from EVCC
+        """
         # Can be defined by user
         self.interface = interface
         self.ipv6_address = ipv6_address
         self.protocol = protocol
         self.tcp_port = tcp_port
         self.sdp_port = sdp_port
+        # Station will use TLS if flag is True
         self.tls_flag = tls_flag
+        # If True: Station will follow the security flag from the EVCC => override tls_flag
+        self.accept_security = accept_security
 
         # Cannot be defined by user
         self.udp_stop_flag = asyncio.Event()
@@ -139,14 +166,35 @@ class ServerManager:
                 # TODO: Add parser for SDP request
                 print(f"Received {len(data)} bytes from {addr}: {data}")
                 sdp_request = V2GTPMessage(data)
+                requested_security, _ = sdp_request.parse_v2gtp_sdp_request()
+
+                # True => the station use same security as the EVCC requested
+                if self.accept_security:
+                    if requested_security == V2GTPProtocols.TLS:
+                        self.tls_flag = True
+                    elif requested_security == V2GTPProtocols.NO_TLS:
+                        self.tls_flag = False
+                else:
+                    if (
+                        requested_security == V2GTPProtocols.TLS
+                        and self.tls_flag
+                    ):
+                        pass
+                    elif (
+                        requested_security == V2GTPProtocols.NO_TLS
+                        and not self.tls_flag
+                    ):
+                        pass
+                    else:
+                        continue
+
+                # Create proper SDP response message
                 sdp_response = sdp_request.create_response(
                     ipv6=self.ipv6_address,
                     port=self.tcp_port,
                     protocol=self.protocol,
                     tls_flag=self.tls_flag,
                 )
-
-                # TODO: Create proper SDP response message
                 response_message = sdp_response
                 sdp_socket.sendto(response_message, addr)
 
@@ -179,8 +227,7 @@ class ServerManager:
         ) as server_sock:
             # Get interface index
             interface_index = socket.if_nametoindex(self.interface)
-            # Bind to the multicast group address
-            # TODO: Use port in bind, and inform the EVCC on which port to connect
+
             port = self.tcp_port
             link_local_address = self.ipv6_address
 
@@ -233,6 +280,7 @@ class ServerManager:
                 if not data:
                     break
                 print(f"Received from client: {data}")
+                # TODO: Add routine for V2GTP communication
                 response_message = b"Hello from Server"
                 conn.sendall(response_message)
         except Exception as error:

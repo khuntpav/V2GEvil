@@ -31,12 +31,14 @@ class ClientManager:
         ipv6_address: str = V2GTPAddress.CAR.value,
         protocol: bytes = V2GTPProtocols.TCP.value,
         tls_flag: bool = False,
+        accept_security: bool = True,
     ):
         """Initialize."""
         self.interface = interface
         self.ipv6_address = ipv6_address
         self.protocol = protocol
         self.tls_flag = tls_flag
+        self.accept_security = accept_security
         self.tcp_server_address = None
         self.tcp_server_port = None
 
@@ -74,7 +76,6 @@ class ClientManager:
         )[0][4]
         print(f"Send to:{sock_addr}")
 
-        # TODO: Send regular V2G SDP request message
         msg = V2GTPMessage()
         sdp_request = msg.create_v2gtp_sdp_request(
             protocol=self.protocol, tls_flag=self.tls_flag
@@ -86,12 +87,30 @@ class ClientManager:
         while True:
             data, server_address = SDP_socket.recvfrom(1024)
             if data:
-                # TODO: Use server_address and port in start_tcp_client method
-                # TODO: Add some check if TLS is same as in request or not and decide if accept the response or end communication
-                #       Based on some parameter from user
                 security_byte, protocol_byte = self.sdp_response_handler(
                     data, server_address
                 )
+                # If True, TLS will be used if is in SDP response from server
+                if self.accept_security:
+                    if security_byte == V2GTPProtocols.TLS:
+                        self.tls_flag = True
+                    elif security_byte == V2GTPProtocols.NO_TLS:
+                        self.tls_flag = False
+                # False => security byte has to be the same as in SDP request
+                # If security byte is different, raise ValueError
+                else:
+                    if security_byte == V2GTPProtocols.TLS and self.tls_flag:
+                        pass
+                    elif (
+                        security_byte == V2GTPProtocols.NO_TLS
+                        and not self.tls_flag
+                    ):
+                        pass
+                    else:
+                        raise ValueError(
+                            "TLS flag in SDP response is different"
+                            "than in SDP request and user chose not to accept"
+                        )
                 break
 
         SDP_socket.close()
@@ -109,6 +128,7 @@ class ClientManager:
             protocol_byte,
         ) = sdp_response.parse_v2gtp_sdp_response()
 
+        # Convert from bytes to int
         self.tcp_server_port = int.from_bytes(
             self.tcp_server_port, byteorder="big"
         )
@@ -121,19 +141,20 @@ class ClientManager:
             f"Server address: {self.tcp_server_address}, "
             f"server port: {self.tcp_server_port}, "
             f"security byte: {security_byte}, "
-            f"protocol: {protocol_byte}\n"
+            f"protocol byte: {protocol_byte}\n"
         )
 
         return security_byte, protocol_byte
 
     def tcp_client(self, security_byte: bytes):
         """Start TCP client."""
+
         print("TCP client started")
         interface_index = socket.if_nametoindex(self.interface)
         # TCP server port and address will be received from SDP response
         # For now, it's hardcoded
         if security_byte == V2GTPProtocols.NO_TLS:
-            # TODO: Run on plain TCP    # TCP server port and address will be received from SDP response
+            # TODO: Run on plain TCP
             link_local_address = self.ipv6_address
             src_port = random.choice(
                 range(
@@ -166,6 +187,7 @@ def start(
     ipv6_address: str = V2GTPAddress.CAR.value,
     protocol: bytes = V2GTPProtocols.TCP.value,
     tls_flag: bool = False,
+    accept_security: bool = True,
 ):
     """Start car."""
     logger.debug("Starting car")
@@ -182,6 +204,7 @@ def start(
             ipv6_address=ipv6_address,
             protocol=protocol,
             tls_flag=tls_flag,
+            accept_security=accept_security,
         )
         # security and protocol byte are returned from server in SDP response
         security_byte, protocol_byte = client.sdp_client()
