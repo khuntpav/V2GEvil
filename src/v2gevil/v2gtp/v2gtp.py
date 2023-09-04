@@ -6,7 +6,9 @@ The implementation is based on ISO 15118-2:2014.
 """
 import os.path
 import logging
+import socket
 import requests
+
 
 from scapy.plist import PacketList
 from scapy.packet import Packet
@@ -17,11 +19,18 @@ from scapy.layers.inet6 import IPv6
 from scapy.utils import linehexdump
 from scapy.all import rdpcap
 
+from ..v2gtp.v2gtp_enums import (
+    V2GTPMessageType,
+    V2GTPProtocols,
+    V2GTPAddress,
+    V2GTPVersion,
+)
+
 
 logger = logging.getLogger(__name__)
 
 
-class V2GTP_Message:
+class V2GTPMessage:
     """V2GTP message class.
 
     Class represents V2GTP message.
@@ -29,17 +38,26 @@ class V2GTP_Message:
     Contains header and payload in bytes.
     """
 
-    def __init__(self, message: bytes):
+    def __init__(self, message: bytes = b""):
         """Initialize V2GTP message."""
         self.message = message
         self.header = self.message[:8]
         self.payload = self.message[8:]
+        self.payload_type = self.header[2:4]
 
-    def create_message(self, payload: bytes, type: str) -> bytes:
+    def create_message(self, payload: bytes, payload_type: bytes) -> bytes:
         """Create V2GTP message."""
-        self.message = b""
-
-        return self.message
+        version = V2GTPVersion.CURRENT_VERSION
+        inverse_version = V2GTPVersion.CURRENT_VERSION_INVERSE
+        payload_length = int.to_bytes(len(payload), length=4, byteorder="big")
+        # Header is 8 bytes long
+        # 1. byte => version
+        # 2. byte => inverse version
+        # 3.-4. bytes => payload type
+        # 5.-8. bytes => payload length
+        header = version + inverse_version + payload_type + payload_length
+        message = header + payload
+        return message
 
     def get_payload(self) -> bytes:
         """Get payload."""
@@ -63,6 +81,145 @@ class V2GTP_Message:
         """Get XML."""
         # TODO: Add EXI to XML conversion
         return ""
+
+    # Methods for bytes given as data
+    # TODO: probably put these methods in Class V2GTPMessage
+
+    def is_v2gtp_sdp_request_data(self) -> bool:
+        """Check if given data is V2GTP SDP request."""
+        if self.payload_type == V2GTPMessageType.SDP_REQUEST:
+            return True
+
+        return False
+
+    def is_v2gtp_sdp_response_data(self) -> bool:
+        """Check if given data is V2GTP SDP response."""
+        if self.payload_type == V2GTPMessageType.SDP_RESPONSE:
+            return True
+
+        return False
+
+    def is_v2gtp_exi_msg_data(self) -> bool:
+        """Check if given data is V2GTP EXI message."""
+        if self.payload_type == V2GTPMessageType.V2GTP_EXI_MSG:
+            return True
+
+        return False
+
+    def parse_v2gtp_msg(self):
+        """Parse V2GTP message."""
+        if self.payload_type == V2GTPMessageType.V2GTP_EXI_MSG:
+            return self.parse_v2gtp_exi_msg()
+        if self.payload_type == V2GTPMessageType.SDP_REQUEST:
+            return self.parse_v2gtp_sdp_request()
+        if self.payload_type == V2GTPMessageType.SDP_RESPONSE:
+            return self.parse_v2gtp_sdp_response()
+
+        return None, None, None, None
+
+    def parse_v2gtp_exi_msg(self):
+        """Parse V2GTP EXI message."""
+        # TODO: Implement this method
+        raise NotImplementedError(
+            "Parse EXI msg is not implemented yet! Exiting..."
+        )
+
+    def parse_v2gtp_sdp_request(self):
+        """Parse V2GTP SDP request."""
+        security_byte = self.payload[0:1]
+        transport_proto_byte = self.payload[1:2]
+
+        return security_byte, transport_proto_byte
+
+    def parse_v2gtp_sdp_response(self):
+        """Parse V2GTP SDP response."""
+        server_address = self.payload[0:16]
+        server_port = self.payload[16:18]
+        security_byte = self.payload[18:19]
+        transport_proto_byte = self.payload[19:20]
+
+        return server_address, server_port, security_byte, transport_proto_byte
+
+    # TODO: Implement this method
+    def create_v2gtp_exi_msg_response(self) -> bytes:
+        """Create V2GTP EXI message response."""
+        return b""
+
+    def create_v2gtp_sdp_response(
+        self,
+        ipv6: str = V2GTPAddress.STATION,
+        port: int = 15119,
+        protocol: bytes = V2GTPProtocols.TCP,
+        tls_flag: bool = False,
+    ) -> bytes:
+        """Create V2GTP SDP response."""
+
+        # TODO: Maybe implement response of TLS based on TLS in SDP request
+        ipv6_bytes = socket.inet_pton(socket.AF_INET6, ipv6)
+        port_bytes = port.to_bytes(length=2, byteorder="big")
+        if tls_flag is True:
+            security_byte = V2GTPProtocols.TLS
+        else:
+            security_byte = V2GTPProtocols.NO_TLS
+
+        payload_type = V2GTPMessageType.SDP_RESPONSE
+        # Number of bytes in payload is 20, payload length is from 5. to 8. byte
+        # payload_length = int.to_bytes(20, length=4, byteorder="big")
+
+        # Payload is 20 bytes long for SDP response
+        # 1.-16. bytes => IPv6 address
+        # 17.-18. bytes => port number
+        # 19. byte => security byte
+        # 20. byte => transport protocol byte
+        payload = ipv6_bytes + port_bytes + security_byte + protocol
+        created_message = self.create_message(
+            payload=payload, payload_type=payload_type
+        )
+
+        return created_message
+
+    def create_v2gtp_sdp_request(
+        self, protocol: bytes = V2GTPProtocols.TCP, tls_flag: bool = False
+    ) -> bytes:
+        """Create V2GTP SDP request."""
+
+        # Payload is 2 bytes long for SDP request
+        # 1. byte => security byte
+        # 2. byte => transport protocol byte
+        if tls_flag is True:
+            security_byte = V2GTPProtocols.TLS
+        else:
+            security_byte = V2GTPProtocols.NO_TLS
+
+        payload = security_byte + protocol
+        payload_type = V2GTPMessageType.SDP_REQUEST
+        created_message = self.create_message(
+            payload=payload, payload_type=payload_type
+        )
+
+        return created_message
+
+    def create_response(
+        self,
+        ipv6: str = "",
+        port: int = 15119,
+        protocol: bytes = V2GTPProtocols.TCP,
+        tls_flag: bool = False,
+    ) -> bytes:
+        """Create response message."""
+        # Check if payload type is V2GTP EXI message or SDP message
+        if self.is_v2gtp_exi_msg_data():
+            return self.create_v2gtp_exi_msg_response()
+
+        if self.is_v2gtp_sdp_request_data():
+            return self.create_v2gtp_sdp_response(
+                ipv6=ipv6,
+                port=port,
+                protocol=protocol,
+                tls_flag=tls_flag,
+            )
+
+        return b""
 
 
 # TODO: Create class called V2GTP Packet, ihnerit from scapy.Packet
