@@ -1,4 +1,4 @@
-from v2gevil.v2gtp import v2gtp
+from ..v2gtp import v2gtp
 
 # TODO: Probably there will be need for implementing also
 # messages for data link layer, ISO 15118-3

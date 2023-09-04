@@ -1,6 +1,7 @@
-"""Module for station implementation.
+"""
+Module for station implementation.
 
-This implementation will be done by using Scapy library."""
+"""
 
 
 import logging
@@ -9,15 +10,15 @@ import struct
 import asyncio
 import random
 
-logger = logging.getLogger(__name__)
+from ..v2gtp.v2gtp import V2GTPMessage
+from ..v2gtp.v2gtp_enums import (
+    V2GTPMessageType,
+    V2GTPProtocols,
+    V2GTPPorts,
+    V2GTPAddress,
+)
 
-# Port number for SDP server
-V2G_UDP_SDP_SERVER = 15118
-# Possible ports for SDP client
-V2G_UDP_SDP_CLIENT = range(49152, 65535)
-# Possible ports for TCP server/client
-V2G_DST_TCP_DATA = range(49152, 65535)
-V2G_SRC_TCP_DATA = V2G_DST_TCP_DATA
+logger = logging.getLogger(__name__)
 
 
 class ServerManager:
@@ -27,10 +28,30 @@ class ServerManager:
     Class for managing the servers (SDP, TCP, TLS)
     """
 
-    def __init__(self, interface: str = "eth_station"):
+    def __init__(
+        self,
+        interface: str = "eth_station",
+        ipv6_address: str = V2GTPAddress.STATION.value,
+        protocol: bytes = V2GTPProtocols.TCP.value,
+        sdp_port: int = V2GTPPorts.V2G_UDP_SDP_SERVER.value,
+        tcp_port: int = random.choice(
+            range(
+                V2GTPPorts.V2G_DST_TCP_DATA_START.value,
+                V2GTPPorts.V2G_DST_TCP_DATA_END.value,
+            )
+        ),
+        tls_flag: bool = False,
+    ):
         """Initialize Server Manager."""
+        # Can be defined by user
         self.interface = interface
-        self.ipv6_address = "fe80::d237:45ff:fe88:b12b"  # Hardcoded for now
+        self.ipv6_address = ipv6_address
+        self.protocol = protocol
+        self.tcp_port = tcp_port
+        self.sdp_port = sdp_port
+        self.tls_flag = tls_flag
+
+        # Cannot be defined by user
         self.udp_stop_flag = asyncio.Event()
         self.tcp_continue_flag = asyncio.Event()
         self.tcp_connection = None
@@ -65,7 +86,7 @@ class ServerManager:
         # Get interface index
         interface_index = socket.if_nametoindex(self.interface)
         # Bind to the multicast group address
-        port = V2G_UDP_SDP_SERVER
+        port = self.sdp_port
 
         # Bind for IPv6 should use 4-tuple (host, port, flowinfo, scopeid)
         # For AF_INET6 address family, a four-tuple (host, port, flowinfo, scope_id)
@@ -80,7 +101,8 @@ class ServerManager:
         # and is meant to be passed to the socket.connect() method or bind()
         # The scope_id is a number that identifies the interface in a scope.
         # can be obtained from if_nametoindex() or from the ip link show in linux
-        multicast_address = "ff02::1"
+        multicast_address = V2GTPAddress.MULTICAST_ADDRESS.value
+
         logger.debug(
             socket.getaddrinfo(
                 multicast_address,
@@ -114,9 +136,18 @@ class ServerManager:
             while not self.udp_stop_flag.is_set():
                 print("SDP server is running in while loop")
                 data, addr = sdp_socket.recvfrom(1024)
+                # TODO: Add parser for SDP request
                 print(f"Received {len(data)} bytes from {addr}: {data}")
+                sdp_request = V2GTPMessage(data)
+                sdp_response = sdp_request.create_response(
+                    ipv6=self.ipv6_address,
+                    port=self.tcp_port,
+                    protocol=self.protocol,
+                    tls_flag=self.tls_flag,
+                )
 
-                response_message = b"SDP response from server"
+                # TODO: Create proper SDP response message
+                response_message = sdp_response
                 sdp_socket.sendto(response_message, addr)
 
                 if not self.tcp_continue_flag.is_set():
@@ -141,24 +172,24 @@ class ServerManager:
         After connection is established, stop the SDP server
         and wait for V2G communication session
         """
-        print("TCP server started")
+        logger.debug("TCP server started")
+
         with socket.socket(
             family=socket.AF_INET6, type=socket.SOCK_STREAM
         ) as server_sock:
             # Get interface index
             interface_index = socket.if_nametoindex(self.interface)
             # Bind to the multicast group address
-            port = random.randint(
-                V2G_DST_TCP_DATA.start, V2G_DST_TCP_DATA.stop
-            )
-            link_local_address = "fe80::d237:45ff:fe88:b12b"
-            # TODO: Add variable to class for tcp_port
+            # TODO: Use port in bind, and inform the EVCC on which port to connect
+            port = self.tcp_port
+            link_local_address = self.ipv6_address
+
             # Add that to sdp_server cause it will inform the EVCC on which
             # port to connect to the TCP server
 
             # Avoid bind() exception: OSError: [Errno 48] Address already in use
             server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server_sock.bind((link_local_address, 15119, 0, interface_index))
+            server_sock.bind((link_local_address, port, 0, interface_index))
             server_sock.listen()
             # This will accept only one client
             #  server doesn't accept new connections for each iteration of the loop
@@ -189,8 +220,11 @@ class ServerManager:
 
         After V2G communication session is established, handle V2GTP communication.
         """
+
         if self.tcp_connection is None:
             return
+
+        logger.debug("V2GTP communication handler started")
 
         conn = self.tcp_connection
         try:
@@ -212,7 +246,7 @@ def start_async(interface: str = "eth_station"):
     """Start station.
 
     To handle stop of SDP server after TCP connection is established,
-    it's necessary to use threading (or maybe asyncio)."""
+    it's necessary to use asyncio."""
 
     manager = ServerManager(interface=interface)
     asyncio.run(manager.start())
@@ -281,7 +315,7 @@ def sdp_server(interface: str = "eth_station"):
     # )
 
     # Bind to the multicast group address
-    port = V2G_UDP_SDP_SERVER
+    port = V2GTPPorts.V2G_UDP_SDP_SERVER
 
     # Bind for IPv6 should use 4-tuple (host, port, flowinfo, scopeid)
     # For AF_INET6 address family, a four-tuple (host, port, flowinfo, scope_id)
@@ -296,8 +330,8 @@ def sdp_server(interface: str = "eth_station"):
     # and is meant to be passed to the socket.connect() method or bind()
     # The scope_id is a number that identifies the interface in a scope.
     # can be obtained from if_nametoindex() or from the ip link show in linux
-    multicast_address = "ff02::1"
-    link_local_address = "fe80::d237:45ff:fe88:b12b"
+    multicast_address = V2GTPAddress.MULTICAST_ADDRESS
+    link_local_address = V2GTPAddress.STATION
     logger.debug(socket.getaddrinfo(link_local_address, port))
     logger.debug(
         socket.getaddrinfo(
