@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from .MsgDataTypes import NotificationType
 
 
 class Header(BaseModel):
@@ -10,8 +11,9 @@ class Header(BaseModel):
         session_info: The session info of the V2G message.
     """
 
+    # sessionIDType, hexbinary, maxlength 8
     session_id: str = Field(..., alias="SessionID")
     # These fields are not required => optional
-    # TODO: Maybe use Optional from typing module in combination with Field?
-    notification: str = Field(None, alias="Notification")
-    session_info: str = Field(None, alias="xmlsig:Signature")
+    notification: NotificationType = Field(None, alias="Notification")
+    # TODO: SignatureType is not implemented yet, Test how libs for signing XML works
+    signature: str = Field(None, alias="xmlsig:Signature")

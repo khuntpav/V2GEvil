@@ -17,10 +17,10 @@ from pydantic import BaseModel, Field
 # For all fields in all classes
 
 
-class ResponseCodeType(str, Enum):
-    """Enum ResponseCodeType.
+class responseCodeType(str, Enum):
+    """Enum responseCodeType.
 
-    Enum for ResponseCodeType.
+    Enum for responseCodeType. xs:string in the schema.
     """
 
     SUCCESS_NEGOTIATION = "OK_SuccessfullNegotiation"
@@ -28,7 +28,7 @@ class ResponseCodeType(str, Enum):
     FAILED_NEGOTIATION = "FAILED_Negotiation"
 
 
-class AppProtocol(BaseModel):
+class AppProtocolType(BaseModel):
     """ComlexType AppProtocol.
 
     Includes the elements ProtocolNamespace, VersionMajor, VersionMinor, SchemaID and Priority.
@@ -42,10 +42,13 @@ class AppProtocol(BaseModel):
     """
 
     # Three dots (...) means that the field is required and has no default value
+    # ProtocolNamespaceType, is xs:anyURI in the schema, max 100 chars
     proto_ns: str = Field(..., alias="ProtocolNamespace")
     version_major: int = Field(..., alias="VersionMajor")
     version_minor: int = Field(..., alias="VersionMinor")
+    # idType, is usignsignedByte in the schema
     schema_id: int = Field(..., alias="SchemaID")
+    # priorityType, is xs:unsignedByte in the schema, values: 1-20
     priority: int = Field(..., alias="Priority")
 
 
@@ -62,7 +65,8 @@ class supportedAppProtocolReq(BaseModel):
     """
 
     # EVCC requests SECC with the list of protocols supported by EVCC.
-    app_protocol: List[AppProtocol] = Field(..., alias="AppProtocol")
+    # MinOccurs = 1, MaxOccurs = 20
+    app_protocol: List[AppProtocolType] = Field(..., alias="AppProtocol")
 
 
 class supportedAppProtocolRes(BaseModel):
@@ -75,5 +79,6 @@ class supportedAppProtocolRes(BaseModel):
 
     """
 
-    response_code: ResponseCodeType = Field(..., alias="ResponseCode")
+    response_code: responseCodeType = Field(..., alias="ResponseCode")
+    # idType, is usignsignedByte in the schema, minOccur=0
     schema_id: str = Field(None, alias="SchemaID")
