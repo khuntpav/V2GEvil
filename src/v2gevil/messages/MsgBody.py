@@ -42,7 +42,7 @@ class BodyBaseType(ABC, BaseModel):
         return self.__class__.__name__
 
 
-""""Here I need to define all types of messages as classes. Inherits from BodyBaseType.
+"""Here I need to define all types of messages as classes. Inherits from BodyBaseType.
 
 These classes are used in Body class as attributes. Only one attribute can be set at a time.
 These classes are used as BodyElement, which is abstract element.

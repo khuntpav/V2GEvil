@@ -44,8 +44,6 @@ class ServiceType(BaseModel):
     free_service: bool = Field(..., alias="FreeService")
 
 
-# TODO: for now, skipped ServiceListType and SelectedServiceListType
-# Will be probably implement in some class in Body as List[ServiceType] and List[SelectedServiceType]
 class SelectedServiceType(BaseModel):
     """ "ComplexType SelectedServiceType."""
 
@@ -62,9 +60,6 @@ class SelectedServiceListType(BaseModel):
     selected_service: List[SelectedServiceType] = Field(
         ..., alias="SelectedService"
     )
-
-
-# TODO: for now, skipped ServiceParameterListType
 
 
 class unitSymbolType(str, Enum):
@@ -364,7 +359,6 @@ class RelativeTimeIntervalType(IntervalType):
     duration: str = Field(None, alias="duration")
 
 
-# TODO: for now skipped
 class EntryType(ABC, BaseModel):
     """complexType EntryType. Abstract class - abstract in XSD"""
 
@@ -626,10 +620,9 @@ class privateKeyType(ABC, BaseModel):
 
     # in XSD is defined only as xs:base64Binary, maxLength 48
     # but It's need for the next class to have the value
-    # xs:base64Binary is base64 encoded bytes
-    # so the result is base64 string => str
-    # to get bytes from base64 string use base64.b64decode()
-    # type: xs:base64Binary, maxLength 48
+    # xs:base64Binary, maxLength 48
+    # so base64 encode private key in bytes
+    # to get bytes base64.b64encode(value)
     value: str = Field(..., alias="value")
 
 
