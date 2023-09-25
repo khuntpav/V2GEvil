@@ -16,4 +16,6 @@ class Header(BaseModel):
     # These fields are not required => optional
     notification: NotificationType = Field(None, alias="Notification")
     # TODO: SignatureType is not implemented yet, Test how libs for signing XML works
-    signature: str = Field(None, alias="xmlsig:Signature")
+    # xmlsig does not implement ECDSA, pyXMLSecurity neither
+    # Need to implement it by myself => in xmlsig-core-schema.py
+    signature: str = Field(None, alias="Signature")

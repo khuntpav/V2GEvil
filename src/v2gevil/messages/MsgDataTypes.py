@@ -13,7 +13,7 @@ simple types: starts with lower case letter
 complex types: starts with UPPER case letter
 
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List
 from enum import Enum
 from abc import ABC
@@ -30,6 +30,10 @@ class serviceCategoryType(str, Enum):
 
 class ServiceType(BaseModel):
     """ComplexType ServiceType."""
+
+    # To avoid print 'ResponseCode': <responseCodeType.OK: 'OK'>
+    # cause i want only 'ResponseCode': 'OK'
+    model_config = ConfigDict(use_enum_values=True)
 
     # serviceIDType, unsignedShort
     service_id: int = Field(..., alias="ServiceID")
@@ -182,6 +186,8 @@ class paymentOptionType(str, Enum):
 class PaymentOptionListType(BaseModel):
     """ComplexType PaymentOptionListType."""
 
+    model_config = ConfigDict(use_enum_values=True)
+
     # paymentOptionType, minOccurs = 1 => required, maxOccurs = 2 => 1-2 items in list
     payment_option: List[paymentOptionType] = Field(..., alias="PaymentOption")
 
@@ -206,6 +212,8 @@ class EnergyTransferModeType(str, Enum):
 
 class SupportedEnergyTransferModeType(BaseModel):
     """ComplexType SupportedEnergyTransferModeType."""
+
+    model_config = ConfigDict(use_enum_values=True)
 
     # EnergyTransferModeType, minOccurs = 1, maxOccurs = 6
     energy_transfered_mode: List[EnergyTransferModeType] = Field(
@@ -511,8 +519,8 @@ class DC_EVPowerDeliveryParameterType(EVPowerDeliveryParameterType):
     charging_complete: bool = Field(..., alias="ChargingComplete")
 
 
-class EVSENotificationType(BaseModel):
-    """complexType EVSENotificationType"""
+class EVSENotificationType(str, Enum):
+    """enumerated values for EVSENotificationType"""
 
     NONE = "None"
     STOP_CHARGING = "StopCharging"

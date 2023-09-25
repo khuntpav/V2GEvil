@@ -1,5 +1,5 @@
 from abc import ABC
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Union, List
 from .MsgDataTypes import (
     responseCodeType,
@@ -38,8 +38,23 @@ class BodyBaseType(ABC, BaseModel):
     Abstract class.
     """
 
+    # To avoid print 'ResponseCode': <responseCodeType.OK: 'OK'>
+    # cause i want only 'ResponseCode': 'OK'
+    model_config = ConfigDict(use_enum_values=True)
+
     def __str__(self) -> str:
         return self.__class__.__name__
+
+    # To avoid print 'ResponseCode': <responseCodeType.OK: 'OK'>
+    # cause i want only 'ResponseCode': 'OK'
+    # Modify of Model Config
+    # Behaviour of Pydantic can be controlled via the BaseModel.model_config
+    # before V2 was used Config class, now is deprecated and prefered to use
+    # model_config class attribute
+    # class Config:
+    #    """Config class for BodyBaseType."""
+    #
+    #    use_enum_values = True
 
 
 """Here I need to define all types of messages as classes. Inherits from BodyBaseType.
@@ -298,6 +313,12 @@ class SessionStopRes(BodyBaseType):
     # ResponseCode, minOccurs 1 => required
     # responseCodeType, enum values, minOccurs 1 => required
     response_code: responseCodeType = Field(..., alias="ResponseCode")
+
+    # To avoid print 'ResponseCode': <responseCodeType.OK: 'OK'>
+    # cause i want only 'ResponseCode': 'OK'
+    # Added to BodyBaseType class Config: use_enum_values = True
+    # class Config:
+    #    use_enum_values = True
 
 
 class CertificateUpdateReq(BodyBaseType):
@@ -623,6 +644,14 @@ class Body(BaseModel):
     # SessionSetup
     session_setup_req: SessionSetupReq = Field(None, alias="SessionSetupReq")
     session_setup_res: SessionSetupRes = Field(None, alias="SessionSetupRes")
+
+    # ServiceDiscovery
+    service_discovery_req: ServiceDiscoveryReq = Field(
+        None, alias="ServiceDiscoveryReq"
+    )
+    service_discovery_res: ServiceDiscoveryRes = Field(
+        None, alias="ServiceDiscoveryRes"
+    )
 
     # ServiceDetail
     service_detail_req: ServiceDetailReq = Field(
