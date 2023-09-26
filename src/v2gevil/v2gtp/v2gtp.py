@@ -8,7 +8,7 @@ import os.path
 import logging
 import socket
 import requests
-
+import random
 
 from scapy.plist import PacketList
 from scapy.packet import Packet
@@ -25,6 +25,17 @@ from ..v2gtp.v2gtp_enums import (
     V2GTPAddress,
     V2GTPVersion,
 )
+from ..messages import messages
+from ..messages.MsgBody import (
+    SessionSetupReq,
+)
+from ..messages.MsgDef import V2G_Message
+from ..messages.AppProtocol import (
+    supportedAppProtocolReq,
+    supportedAppProtocolRes,
+    responseCodeType as responseCodeTypeAppProto,
+)
+from ..messages.MsgDef import Header, Body
 
 
 logger = logging.getLogger(__name__)
@@ -45,8 +56,10 @@ class V2GTPMessage:
         self.payload = self.message[8:]
         self.payload_type = self.header[2:4]
 
+    # TODO: Maybe this function change to return V2GTPMessage instance
+    # and have another method to_bytes() for converting to bytes
     def create_message(self, payload: bytes, payload_type: bytes) -> bytes:
-        """Create V2GTP message."""
+        """Create V2GTP message in bytes"""
         version = V2GTPVersion.CURRENT_VERSION
         inverse_version = V2GTPVersion.CURRENT_VERSION_INVERSE
         payload_length = int.to_bytes(len(payload), length=4, byteorder="big")
@@ -106,6 +119,31 @@ class V2GTPMessage:
 
         return False
 
+    def decode_v2gtp_exi_msg(self) -> str:
+        """Decode V2GTP EXI message."""
+
+        try:
+            response = requests.post(
+                "http://localhost:9000",
+                headers={"Format": "EXI"},
+                data=self.payload.hex(),
+                timeout=10,
+            )
+            if response.status_code == 200:
+                logger.debug("Response from V2GDecoder:\n")
+                logger.debug(response.text)
+            else:
+                logger.warning("Error: %s", response.status_code)
+                logger.warning("Error: %s", response.text)
+        except requests.exceptions.Timeout:
+            logger.error("Timeout! Is V2GDecoder running?")
+            exit(1)
+        except requests.exceptions.ConnectionError:
+            logger.error("Connection refused! Is V2GDecoder running?")
+            exit(1)
+
+        return response.text
+
     def parse_v2gtp_msg(self):
         """Parse V2GTP message."""
         if self.payload_type == V2GTPMessageType.V2GTP_EXI_MSG:
@@ -120,9 +158,21 @@ class V2GTPMessage:
     def parse_v2gtp_exi_msg(self):
         """Parse V2GTP EXI message."""
         # TODO: Implement this method
-        raise NotImplementedError(
-            "Parse EXI msg is not implemented yet! Exiting..."
-        )
+        # Maybe implement here also EXI to XML conversion
+        # Then parsing as XML => find what kind of req was received
+        # Or maybe return class instance of req/res
+        # or just string of root element
+
+        # Get XML string from EXI payload
+        xml_str = self.decode_v2gtp_exi_msg()
+
+        # Find what kind of req was received
+        # Convert XML to data in dictionary => type dict
+        obj = messages.xml2class_instance(xml_str)
+        # obj_name will be V2G_Message or supportedAppProtocolReq/Res
+        obj_name = obj.__class__.__name__
+
+        return obj, obj_name
 
     def parse_v2gtp_sdp_request(self):
         """Parse V2GTP SDP request."""
@@ -143,7 +193,100 @@ class V2GTPMessage:
     # TODO: Implement this method
     def create_v2gtp_exi_msg_response(self) -> bytes:
         """Create V2GTP EXI message response."""
-        return b""
+
+        if self.is_v2gtp_exi_msg_data() is False:
+            logger.warning("Payload type is not EXI message!")
+            raise ValueError("Payload type is not EXI message!")
+
+        payload_type = V2GTPMessageType.V2GTP_EXI_MSG
+        response_obj = None
+
+        # TODO: Check what type of request was received => need to EXI decode
+        obj, obj_name = self.parse_v2gtp_exi_msg()
+
+        # For now just simple response based on the Responses list
+        # TODO: Load the list of responses at the start of station
+        if isinstance(obj, V2G_Message):
+            if (
+                isinstance(obj.body, SessionSetupReq)
+                and obj.header.session_id == 0
+            ):
+                # SECC shall generate a new (not stored) SessionID, max. 8 bytes
+                # SessionID in hexBinary
+                # TODO VULN: potentially send more than 8 bytes to test EVCC
+                session_id = random.randbytes(8).hex()
+
+            # Session id in response will be same as in req for all other requests
+            session_id = obj.header.session_id
+            # TODO VULN: add Notification and Signature in response and test it
+            header_res = Header(SessionID=session_id)
+
+            # TODO: Implement some logic for req => res mapping => create V2G_Message instance
+            # TODO: implement to Req classes the method to return Response class/ name of response class
+            # TODO: Maybe create for obj method to create instance of response
+            # For now, just name of response class is returned
+            # Will be good if the file will contain dictionary to use model_validate to build instance of response
+            # To get an attribute of class, use getattr(obj, "attribute_name")
+
+            # To get name of setted attribute in Body => get request/response class
+            # Will be only one every time, so list()[0]
+            attribute_name_in_body = list(obj.body.model_fields_set)[0]
+
+            # get attribute from body based on the name of attribute from previous step
+            attribute_instance = getattr(obj.body, attribute_name_in_body)
+            # Just for verification type of attribute
+            # print(type(attribute_instance))
+            # get name of class for attribute - based on __str__() method in class
+            # So to get the class name of attribute use __class__.__name__ or str(attribute)
+            body_type_res = str(attribute_instance)
+            # print(body_type_res) is equal to print(attribute_instance)
+
+            # Dictionary for mapping request to response
+            # TODO: Create dictionary at the start of station
+            # TODO: Add all responses to dictionary coresponding to request
+            # TODO: Think where to keep loading dictionary from file
+            responses = {
+                "SessionSetupReq": {"SessionSetupRes": {"ResponseCode": "OK"}}
+            }
+
+            # Create instance of Body with proper response class
+            # response dictionary is based on the request class name
+            # for example: 'SessionSetupReq' =>
+            #   {'SessionSetupRes': {'ResponseCode': 'OK', 'EVSEID': 'EVSE1'}}
+            body_res = Body(**responses[body_type_res])
+
+            response_obj = V2G_Message(Header=header_res, Body=body_res)
+
+        if isinstance(obj, supportedAppProtocolReq):
+            for app_proto in obj.app_protocol:
+                # TODO: Use enum for NS
+                if app_proto.proto_ns == "urn:iso:15118:2:2013:MsgDef":
+                    # TODO VULN: test if EVCC will accept different schema id or response code
+                    response_obj = supportedAppProtocolRes(
+                        ResponseCode=responseCodeTypeAppProto.SUCCESS_NEGOTIATION,
+                        SchemaID=app_proto.schema_id,
+                    )
+
+        # Use messages.class_instance2xml() method => get XML from class instance
+        response_xml = messages.class_instance2xml(response_obj)
+
+        # Use messages.xml2exi() to get EXI from XML
+        response_exi = messages.xml2exi(response_xml)
+        # Get bytes from EXI
+        response_exi_bytes = bytes.fromhex(response_exi)
+
+        # Create V2GTP EXI message
+        created_message = self.create_message(
+            payload=response_exi_bytes, payload_type=payload_type
+        )
+
+        # Check if V2G Message or supportedAppProtocolReq/Res was received
+        # Based on that create V2G_Message instance or supportedAppProtocolRes/Req instance
+        # Then use messages.class_instance2xml() method
+        # Then use messages.xml2exi() method or encode() method in this file
+        # have bytes from EXI, then use create_message() method and pass EXI bytes as payload
+
+        return created_message
 
     def create_v2gtp_sdp_response(
         self,
