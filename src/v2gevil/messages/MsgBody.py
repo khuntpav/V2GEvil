@@ -31,6 +31,10 @@ from .MsgDataTypes import (
     DC_EVStatusType,
 )
 
+# To inform Pylance (because of pyright implementation) is need
+# to explicitly type Field(default=None,) instead of Field(None,)
+# if the field is Optional
+
 
 class BodyBaseType(ABC, BaseModel):
     """Base class for V2G message body.
@@ -55,6 +59,13 @@ class BodyBaseType(ABC, BaseModel):
     #    """Config class for BodyBaseType."""
     #
     #    use_enum_values = True
+    def response_class_name(self) -> str:
+        """Return the name of the response class.
+
+        Returns:
+            str: The name of the response class.
+        """
+        return self.__class__.__name__.replace("Req", "Res")
 
 
 """Here I need to define all types of messages as classes. Inherits from BodyBaseType.
@@ -66,6 +77,7 @@ Any of these classes can be substituted for a head BodyElement.
 """
 
 
+# ISO 15118-2:2014, messages END
 # Common Messages AC/DC
 class SessionSetupReq(BodyBaseType):
     """Representation of V2GMessage SessionSetupReq."""
@@ -82,14 +94,14 @@ class SessionSetupRes(BodyBaseType):
     # evseIDType, xs:string, minLength 7, maxLength 37
     evse_id: str = Field(..., alias="EVSEID")
     # EVSETimeStamp, xs:long, minOccurs 0 => not required
-    evse_timestamp: int = Field(None, alias="EVSETimeStamp")
+    evse_timestamp: int = Field(default=None, alias="EVSETimeStamp")
 
 
 class ServiceDiscoveryReq(BodyBaseType):
     """Representation of V2GMessage ServiceDiscoveryReq."""
 
     # serviceScopeType, xs:string, maxLength 64, minOccurs 0 => not required
-    service_scope: str = Field(None, alias="ServiceScope")
+    service_scope: str = Field(default=None, alias="ServiceScope")
     # ServiceCategoryType, xs:string, enum values, minOccurs 0 => not required
     service_category: serviceCategoryType = Field(
         None, alias="ServiceCategory"
@@ -108,7 +120,7 @@ class ServiceDiscoveryRes(BodyBaseType):
     # ChargeServiceType, minOccurs 1 => required
     charge_service: ChargeServiceType = Field(..., alias="ChargeService")
     # ServiceListType, minOccurs 0 => not required
-    service_list: ServiceListType = Field(None, alias="ServiceList")
+    service_list: ServiceListType = Field(default=None, alias="ServiceList")
 
 
 class ServiceDetailReq(BodyBaseType):
@@ -179,7 +191,7 @@ class AuthorizationReq(BodyBaseType):
     # Id, xs:ID
     id: str = Field(..., alias="Id")
     # genChallengeType, xs:base64Binary, length 16, minOccurs 0 => required
-    gen_challenge: str = Field(None, alias="GenChallenge")
+    gen_challenge: str = Field(default=None, alias="GenChallenge")
 
 
 class AuthorizationRes(BodyBaseType):
@@ -221,7 +233,9 @@ class ChargeParameterDiscoveryRes(BodyBaseType):
     # EVSEProcessingType, xs:string, enum values, minOccurs 1 => required
     evse_processing: EVSEProcessingType = Field(..., alias="EVSEProcessing")
     # SASchedulesType, minOccurs 0 => not required
-    sa_schedules: SAScheduleListType = Field(None, alias="SAScheduleList")
+    sa_schedules: SAScheduleListType = Field(
+        default=None, alias="SAScheduleList"
+    )
     # EVChargeParameter is abstract type
     # EVChargeParameterType, minOccurs 1 => required
     # at least one of these two attributes must be set
@@ -263,9 +277,13 @@ class PowerDeliveryRes(BodyBaseType):
     # EVSEStatus, minOccurs 1 => required, AC_EVSEStatus or DC_EVSEStatus
     # AC_EVSEStatus
     # AC_EVSEStatusType,
-    ac_evse_status: AC_EVSEStatusType = Field(None, alias="AC_EVSEStatus")
+    ac_evse_status: AC_EVSEStatusType = Field(
+        default=None, alias="AC_EVSEStatus"
+    )
     # DC_EVSEStatusType,
-    dc_evse_status: DC_EVSEStatusType = Field(None, alias="DC_EVSEStatus")
+    dc_evse_status: DC_EVSEStatusType = Field(
+        default=None, alias="DC_EVSEStatus"
+    )
 
 
 class MeteringReceiptReq(BodyBaseType):
@@ -278,7 +296,9 @@ class MeteringReceiptReq(BodyBaseType):
     session_id: str = Field(..., alias="SessionID")
     # SAScheduleTupleID, minOccurs 0 => not required
     # SAIDType, xs:unsignedByte, minInclusive 1, maxInclusive 255
-    sa_schedule_tuple_id: bytes = Field(None, alias="SAScheduleTupleID")
+    sa_schedule_tuple_id: bytes = Field(
+        default=None, alias="SAScheduleTupleID"
+    )
     # MeterInfo, minOccurs 1 => required
     # MeterInfoType
     meter_info: MeterInfoType = Field(..., alias="MeterInfo")
@@ -293,10 +313,14 @@ class MeteringReceiptRes(BodyBaseType):
     # EVSEStatus, minOccurs 1 => required, AC_EVSEStatus or DC_EVSEStatus
     # AC_EVSEStatus
     # AC_EVSEStatusType,
-    ac_evse_status: AC_EVSEStatusType = Field(None, alias="AC_EVSEStatus")
+    ac_evse_status: AC_EVSEStatusType = Field(
+        default=None, alias="AC_EVSEStatus"
+    )
     # DC_EVSEStatus
     # DC_EVSEStatusType,
-    dc_evse_status: DC_EVSEStatusType = Field(None, alias="DC_EVSEStatus")
+    dc_evse_status: DC_EVSEStatusType = Field(
+        default=None, alias="DC_EVSEStatus"
+    )
 
 
 class SessionStopReq(BodyBaseType):
@@ -363,7 +387,7 @@ class CertificateUpdateRes(BodyBaseType):
     e_maid: EMAIDType = Field(..., alias="eMAID")
     # RetryCounter, minOccurs 0 => not required
     # xs:short
-    retry_counter: int = Field(None, alias="RetryCounter")
+    retry_counter: int = Field(default=None, alias="RetryCounter")
 
 
 class CertificateInstallationReq(BodyBaseType):
@@ -431,13 +455,15 @@ class ChargingStatusRes(BodyBaseType):
     sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
     # EVSEMaxCurrent, minOccurs 0 => not required
     # PhysicalValueType
-    evse_max_current: PhysicalValueType = Field(None, alias="EVSEMaxCurrent")
+    evse_max_current: PhysicalValueType = Field(
+        default=None, alias="EVSEMaxCurrent"
+    )
     # MeterInfo, minOccurs 0 => not required
     # MeterInfoType
     meter_info: MeterInfoType = Field(..., alias="MeterInfo")
     # ReceiptRequired, minOccurs 0 => not required
     # xs:boolean
-    receipt_required: bool = Field(None, alias="ReceiptRequired")
+    receipt_required: bool = Field(default=None, alias="ReceiptRequired")
     # AC_EVSEStatus, minOccurs 1 => required
     # AC_EVSEStatusType
     ac_evse_status: AC_EVSEStatusType = Field(..., alias="AC_EVSEStatus")
@@ -517,7 +543,9 @@ class CurrentDemandReq(BodyBaseType):
     )
     # BulkChargingComplete, minOccurs 0 => not required
     # xs:boolean
-    bulk_charging_complete: bool = Field(None, alias="BulkChargingComplete")
+    bulk_charging_complete: bool = Field(
+        default=None, alias="BulkChargingComplete"
+    )
     # ChargingComplete, minOccurs 1 => required
     # xs:boolean
     charging_complete: bool = Field(..., alias="ChargingComplete")
@@ -593,10 +621,10 @@ class CurrentDemandRes(BodyBaseType):
     sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
     # MeterInfo, minOccurs 0 => not required
     # MeterInfoType
-    meter_info: MeterInfoType = Field(None, alias="MeterInfo")
+    meter_info: MeterInfoType = Field(default=None, alias="MeterInfo")
     # ReceiptRequired, minOccurs 0 => not required
     # xs:boolean
-    receipt_required: bool = Field(None, alias="ReceiptRequired")
+    receipt_required: bool = Field(default=None, alias="ReceiptRequired")
 
 
 class WeldingDetectionReq(BodyBaseType):
@@ -623,6 +651,9 @@ class WeldingDetectionRes(BodyBaseType):
     )
 
 
+# ISO 15118-2:2014, messages END
+
+
 # Need to be every type of message as an attribute in Body class
 # because is in the XSD schema as Body subelement
 # and I need for every type of message a class and alias for later parsing to XML
@@ -642,8 +673,12 @@ class Body(BaseModel):
 
     # Common Messages (AC/DC) - START
     # SessionSetup
-    session_setup_req: SessionSetupReq = Field(None, alias="SessionSetupReq")
-    session_setup_res: SessionSetupRes = Field(None, alias="SessionSetupRes")
+    session_setup_req: SessionSetupReq = Field(
+        default=None, alias="SessionSetupReq"
+    )
+    session_setup_res: SessionSetupRes = Field(
+        default=None, alias="SessionSetupRes"
+    )
 
     # ServiceDiscovery
     service_discovery_req: ServiceDiscoveryReq = Field(
@@ -678,8 +713,12 @@ class Body(BaseModel):
     )
 
     # Authorization
-    authorization_req: AuthorizationReq = Field(None, alias="AuthorizationReq")
-    authorization_res: AuthorizationRes = Field(None, alias="AuthorizationRes")
+    authorization_req: AuthorizationReq = Field(
+        default=None, alias="AuthorizationReq"
+    )
+    authorization_res: AuthorizationRes = Field(
+        default=None, alias="AuthorizationRes"
+    )
 
     # ChargeParameterDiscovery
     charge_param_discovery_req: ChargeParameterDiscoveryReq = Field(
@@ -706,8 +745,12 @@ class Body(BaseModel):
     )
 
     # SessionStop
-    session_stop_req: SessionStopReq = Field(None, alias="SessionStopReq")
-    session_stop_res: SessionStopRes = Field(None, alias="SessionStopRes")
+    session_stop_req: SessionStopReq = Field(
+        default=None, alias="SessionStopReq"
+    )
+    session_stop_res: SessionStopRes = Field(
+        default=None, alias="SessionStopRes"
+    )
 
     # CertificateUpdate
     certificate_update_req: CertificateUpdateReq = Field(
@@ -738,12 +781,12 @@ class Body(BaseModel):
 
     # DC Messages - START
     # CableCheck
-    cable_check_req: CableCheckReq = Field(None, alias="CableCheckReq")
-    cable_check_res: CableCheckRes = Field(None, alias="CableCheckRes")
+    cable_check_req: CableCheckReq = Field(default=None, alias="CableCheckReq")
+    cable_check_res: CableCheckRes = Field(default=None, alias="CableCheckRes")
 
     # PreCharge
-    pre_charge_req: PreChargeReq = Field(None, alias="PreChargeReq")
-    pre_charge_res: PreChargeRes = Field(None, alias="PreChargeRes")
+    pre_charge_req: PreChargeReq = Field(default=None, alias="PreChargeReq")
+    pre_charge_res: PreChargeRes = Field(default=None, alias="PreChargeRes")
 
     # CurrentDemand
     current_demand_req: CurrentDemandReq = Field(

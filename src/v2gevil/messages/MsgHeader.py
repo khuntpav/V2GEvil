@@ -11,11 +11,15 @@ class Header(BaseModel):
         session_info: The session info of the V2G message.
     """
 
+    # To inform Pylance (because of pyright implementation) is need
+    # to explicitly type Field(default=None,) instead of Field(None,)
+    # if the field is Optional
+
     # sessionIDType, hexbinary, maxlength 8
     session_id: str = Field(..., alias="SessionID")
     # These fields are not required => optional
-    notification: NotificationType = Field(None, alias="Notification")
+    notification: NotificationType = Field(default=None, alias="Notification")
     # TODO: SignatureType is not implemented yet, Test how libs for signing XML works
     # xmlsig does not implement ECDSA, pyXMLSecurity neither
     # Need to implement it by myself => in xmlsig-core-schema.py
-    signature: str = Field(None, alias="Signature")
+    signature: str = Field(default=None, alias="Signature")

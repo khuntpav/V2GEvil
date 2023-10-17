@@ -47,7 +47,7 @@ class AppProtocolType(BaseModel):
     version_major: int = Field(..., alias="VersionMajor")
     version_minor: int = Field(..., alias="VersionMinor")
     # idType, is usignsignedByte in the schema
-    schema_id: int = Field(..., alias="SchemaID")
+    schema_id: str = Field(..., alias="SchemaID")
     # priorityType, is xs:unsignedByte in the schema, values: 1-20
     priority: int = Field(..., alias="Priority")
 
@@ -81,4 +81,4 @@ class supportedAppProtocolRes(BaseModel):
 
     response_code: responseCodeType = Field(..., alias="ResponseCode")
     # idType, is usignsignedByte in the schema, minOccur=0
-    schema_id: str = Field(None, alias="SchemaID")
+    schema_id: str = Field(default=None, alias="SchemaID")

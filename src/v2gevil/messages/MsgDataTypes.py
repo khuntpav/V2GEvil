@@ -14,7 +14,7 @@ complex types: starts with UPPER case letter
 
 """
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Annotated
 from enum import Enum
 from abc import ABC
 
@@ -28,6 +28,11 @@ class serviceCategoryType(str, Enum):
     OTHER_CUSTOM = "OtherCustom"
 
 
+# To inform Pylance (because of pyright implementation) is need
+# to explicitly type Field(default=None,) instead of Field(None,)
+# if the field is Optional
+
+
 class ServiceType(BaseModel):
     """ComplexType ServiceType."""
 
@@ -38,12 +43,12 @@ class ServiceType(BaseModel):
     # serviceIDType, unsignedShort
     service_id: int = Field(..., alias="ServiceID")
     # service_name minOccurs = 0, serviceNameType, xs:string, maxLength 32
-    service_name: str = Field(None, alias="ServiceName")
+    service_name: str = Field(default=None, alias="ServiceName")
     # service_category minOccurs = 1, serviceCategoryType is enum
     service_category: serviceCategoryType = Field(..., alias="ServiceCategory")
     # serviceScopeType is xs:string in the schema, maxLength 64
     # service_scope minOccurs = 0, xs:string, maxLegth 64
-    service_scope: str = Field(None, alias="ServiceScope")
+    service_scope: str = Field(default=None, alias="ServiceScope")
     # xs:boolean
     free_service: bool = Field(..., alias="FreeService")
 
@@ -54,7 +59,7 @@ class SelectedServiceType(BaseModel):
     # serviceIDType, xs:unsignedShort
     service_id: int = Field(..., alias="ServiceID")
     # service_name minOccurs = 0, type xs:short
-    parameter_set_id: int = Field(None, alias="ParameterSetID")
+    parameter_set_id: int = Field(default=None, alias="ParameterSetID")
 
 
 class SelectedServiceListType(BaseModel):
@@ -88,6 +93,8 @@ class unitSymbolType(str, Enum):
 class PhysicalValueType(BaseModel):
     """ComplexType PhysicalValueType."""
 
+    model_config = ConfigDict(use_enum_values=True)
+
     # multiplier, xs:byte, minInclusive value="-3", maxInclusive value="3"
     multiplier: int = Field(..., alias="Multiplier")
     # unit, xs:string
@@ -103,17 +110,19 @@ class ParameterType(BaseModel):
     name: str = Field(..., alias="Name")
     # From attributes below is used only one, cause in XSD is defined as choice
     # type, xs:boolean
-    bool_value: bool = Field(None, alias="boolValue")
+    bool_value: bool = Field(default=None, alias="boolValue")
     # type, xs:byte
-    byte_value: bytes = Field(None, alias="byteValue")
+    byte_value: bytes = Field(default=None, alias="byteValue")
     # type, xs:short
-    short_value: int = Field(None, alias="shortValue")
+    short_value: int = Field(default=None, alias="shortValue")
     # type, xs:int
-    int_value: int = Field(None, alias="intValue")
+    int_value: int = Field(default=None, alias="intValue")
     # PhysicalValueType,
-    physical_value: PhysicalValueType = Field(None, alias="physicalValue")
+    physical_value: PhysicalValueType = Field(
+        default=None, alias="physicalValue"
+    )
     # type, xs:string
-    string_value: str = Field(None, alias="stringValue")
+    string_value: str = Field(default=None, alias="stringValue")
 
 
 class ParameterSetType(BaseModel):
@@ -140,7 +149,7 @@ class NotificationType(BaseModel):
     #
     fault_code: faultCodeType = Field(..., alias="FaultCode")
     # minOccurs = 0 => not required, type xs:string, maxLength 64
-    fault_msg: str = Field(None, alias="FaultMsg")
+    fault_msg: str = Field(default=None, alias="FaultMsg")
 
 
 class responseCodeType(str, Enum):
@@ -272,7 +281,7 @@ class EVChargeParameterType(ABC, BaseModel):
     """complexType EVChargeParameterType. Abstract class - abstract in XSD"""
 
     # DepartureTime, xs:unsignedInt, minOccurs = 0 => not required
-    departure_time: int = Field(None, alias="DepartureTime")
+    departure_time: int = Field(default=None, alias="DepartureTime")
 
 
 class AC_EVChargeParameter(EVChargeParameterType):
@@ -344,13 +353,15 @@ class DC_EVChargeParameter(EVChargeParameterType):
         None, alias="EVEnergyCapacity"
     )
     # EVEnergyRequest type="PhysicalValueType" minOccurs="0"
-    ev_energy_request: PhysicalValueType = Field(None, alias="EVEnergyRequest")
+    ev_energy_request: PhysicalValueType = Field(
+        default=None, alias="EVEnergyRequest"
+    )
     # FullSOC type="percentValueType" minOccurs="0"
     # percentValueType => xs:byte, minInclusive value="0", maxInclusive value="100"
-    full_soc: bytes = Field(None, alias="FullSOC")
+    full_soc: bytes = Field(default=None, alias="FullSOC")
     # BulkSOC type="percentValueType" minOccurs="0"
     # percentValueType => xs:byte, minInclusive value="0", maxInclusive value="100"
-    bulk_soc: bytes = Field(None, alias="BulkSOC")
+    bulk_soc: bytes = Field(default=None, alias="BulkSOC")
 
 
 class IntervalType(ABC, BaseModel):
@@ -364,7 +375,7 @@ class RelativeTimeIntervalType(IntervalType):
     start: int = Field(..., alias="start")
     # duration, xs:unsignedInt, minInclusive value="0", maxInclusive value="86400"
     # minOccurs = 0 => not required
-    duration: str = Field(None, alias="duration")
+    duration: str = Field(default=None, alias="duration")
 
 
 class EntryType(ABC, BaseModel):
@@ -419,7 +430,7 @@ class SalesTariffEntryType(BaseModel):
         ..., alias="RelativeTimeInterval"
     )
     # EPriceLevel, xs:unsignedByte, minOccurs = 0 => not required
-    e_price_level: int = Field(None, alias="EPriceLevel")
+    e_price_level: int = Field(default=None, alias="EPriceLevel")
     # ConsumptionCost, minOccurs = 0 => not required, maxOccurs = 3
     consumption_cost: List[ConsumptionCostType] = Field(
         None, alias="ConsumptionCost"
@@ -435,9 +446,11 @@ class SalesTariffType(BaseModel):
     sales_tariff_id: int = Field(..., alias="SalesTariffID")
     # SalesTariffDescription, minOccurs = 0 => not required
     # tariffDescriptionType, xs:string, maxLength 32
-    sales_tariff_description: str = Field(None, alias="SalesTariffDescription")
+    sales_tariff_description: str = Field(
+        default=None, alias="SalesTariffDescription"
+    )
     # NumEPriceLevels, xs:unsignedByte, minOccurs = 0 => not required
-    num_e_price_levels: int = Field(None, alias="NumEPriceLevels")
+    num_e_price_levels: int = Field(default=None, alias="NumEPriceLevels")
     # SalesTariffEntry, maxOccurs = 1024
     # SalesTariffEntryType, minOccurs = 1 => required, maxOccurs = 1024
     sales_tariff_entry: List[SalesTariffEntryType] = Field(
@@ -513,7 +526,9 @@ class DC_EVPowerDeliveryParameterType(EVPowerDeliveryParameterType):
     dc_ev_status: DC_EVStatusType = Field(..., alias="DC_EVStatus")
     # BulkChargingComplete, minOccurs = 0 => not required
     # xs:boolean
-    bulk_charging_complete: bool = Field(None, alias="BulkChargingComplete")
+    bulk_charging_complete: bool = Field(
+        default=None, alias="BulkChargingComplete"
+    )
     # ChargingComplete, minOccurs = 1 => required
     # xs:boolean
     charging_complete: bool = Field(..., alias="ChargingComplete")
@@ -593,16 +608,16 @@ class MeterInfoType(BaseModel):
     meter_id: int = Field(..., alias="MeterID")
     # MeterReading, minOccurs = 0 => not required
     # xs:unsignedLong
-    meter_reading: int = Field(None, alias="MeterReading")
+    meter_reading: int = Field(default=None, alias="MeterReading")
     # SigMeterReading, minOccurs = 0 => not required
     # xs:base64Binary, maxLength 64
-    sig_meter_reading: str = Field(None, alias="SigMeterReading")
+    sig_meter_reading: str = Field(default=None, alias="SigMeterReading")
     # MeterStatus, minOccurs = 0 => not required
     # xs:short
-    meter_status: int = Field(None, alias="MeterStatus")
+    meter_status: int = Field(default=None, alias="MeterStatus")
     # TMeter, minOccurs = 0 => not required
     # xs:long
-    t_meter: int = Field(None, alias="TMeter")
+    t_meter: int = Field(default=None, alias="TMeter")
 
 
 class chargingSessionType(str, Enum):
