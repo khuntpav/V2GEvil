@@ -14,7 +14,7 @@ complex types: starts with UPPER case letter
 
 """
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Annotated
+from typing import List
 from enum import Enum
 from abc import ABC
 
@@ -37,7 +37,7 @@ class ServiceType(BaseModel):
     """ComplexType ServiceType."""
 
     # To avoid print 'ResponseCode': <responseCodeType.OK: 'OK'>
-    # cause i want only 'ResponseCode': 'OK'
+    # cause i want only 'ResponseCode': 'OK' in dump of the model
     model_config = ConfigDict(use_enum_values=True)
 
     # serviceIDType, unsignedShort
@@ -277,6 +277,118 @@ class EVSEProcessingType(str, Enum):
     )
 
 
+class EVSENotificationType(str, Enum):
+    """enumerated values for EVSENotificationType"""
+
+    NONE = "None"
+    STOP_CHARGING = "StopCharging"
+    RE_NEGOTIATION = "ReNegotiation"
+
+
+class EVSEStatusType(ABC, BaseModel):
+    """complexType EVSEStatusType. Abstract class - abstract in XSD"""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    # NotificationMaxDelay, minOccurs = 1 => required
+    # xs:unsignedShort
+    notification_max_delay: int = Field(..., alias="NotificationMaxDelay")
+    # EVSENotification, EVSENotificationType, minOccurs = 1 => required
+    evse_notification: EVSENotificationType = Field(
+        ..., alias="EVSENotification"
+    )
+
+
+class AC_EVSEStatusType(EVSEStatusType):
+    """complexType AC_EVSEStatusType"""
+
+    # RCD
+    # xs:boolean
+    rcd: bool = Field(..., alias="RCD")
+
+
+class isolationLevelType(str, Enum):
+    """enumerated values for isolationLevelType"""
+
+    INVALID = "Invalid"
+    VALID = "Valid"
+    WARNING = "Warning"
+    FAULT = "Fault"
+    NO_IMD = "No_IMD"
+
+
+class DC_EVSEStatusCodeType(str, Enum):
+    EVSE_NOT_READY = "EVSE_NotReady"
+    EVSE_READY = "EVSE_Ready"
+    EVSE_SHUTDOWN = "EVSE_Shutdown"
+    EVSE_UTILITY_INTERRUPT_EVENT = "EVSE_UtilityInterruptEvent"
+    EVSE_ISOLATION_MONITORING_ACTIVE = "EVSE_IsolationMonitoringActive"
+    EVSE_EMERGENCY_SHUTDOWN = "EVSE_EmergencyShutdown"
+    EVSE_MALFUNCTION = "EVSE_Malfunction"
+    RESERVED_8 = "Reserved_8"
+    RESERVED_9 = "Reserved_9"
+    RESERVED_A = "Reserved_A"
+    RESERVED_B = "Reserved_B"
+    RESERVED_C = "Reserved_C"
+
+
+class DC_EVSEStatusType(EVSEStatusType):
+    """complexType DC_EVSEStatusType"""
+
+    # EVSEIsolationStatus, minOccurs = 0 => not required
+    evse_isolation_status: isolationLevelType = Field(
+        None, alias="EVSEIsolationStatus"
+    )
+    # EVSEStatusCode, minOccurs = 1 => required
+    evse_status_code: DC_EVSEStatusCodeType = Field(
+        ..., alias="EVSEStatusCode"
+    )
+
+
+class EVSEChargeParameterType(ABC, BaseModel):
+    """complexType EVSEChargeParameterType. Abstract class - abstract in XSD"""
+
+
+class AC_EVSEChargeParameterType(EVSEChargeParameterType):
+    """complexType AC_EVSEChargeParameterType"""
+
+    ac_evse_status: AC_EVSEStatusType = Field(..., alias="AC_EVSEStatus")
+    evse_nominal_voltage: PhysicalValueType = Field(
+        ..., alias="EVSENominalVoltage"
+    )
+    evse_max_current: PhysicalValueType = Field(..., alias="EVSEMaxCurrent")
+
+
+class DC_EVSEChargeParameterType(EVSEChargeParameterType):
+    """complexType DC_EVSEChargeParameterType"""
+
+    dc_evse_status: DC_EVSEStatusType = Field(..., alias="DC_EVSEStatus")
+    evse_max_current_limit: PhysicalValueType = Field(
+        ..., alias="EVSEMaximumCurrentLimit"
+    )
+    evse_max_power_limit: PhysicalValueType = Field(
+        ..., alias="EVSEMaximumPowerLimit"
+    )
+    evse_max_voltage_limit: PhysicalValueType = Field(
+        ..., alias="EVSEMaximumVoltageLimit"
+    )
+    evse_min_current_limit: PhysicalValueType = Field(
+        ..., alias="EVSEMinimumCurrentLimit"
+    )
+    evse_min_voltage_limit: PhysicalValueType = Field(
+        ..., alias="EVSEMinimumVoltageLimit"
+    )
+    evse_current_regulation_tolerance: PhysicalValueType = Field(
+        default=None, alias="EVSECurrentRegulationTolerance"
+    )
+    evse_peak_current_ripple: PhysicalValueType = Field(
+        ..., alias="EVSEPeakCurrentRipple"
+    )
+    evse_energy_to_be_delivered: PhysicalValueType = Field(
+        default=None, alias="EVSEEnergyToBeDelivered"
+    )
+
+
 class EVChargeParameterType(ABC, BaseModel):
     """complexType EVChargeParameterType. Abstract class - abstract in XSD"""
 
@@ -284,7 +396,7 @@ class EVChargeParameterType(ABC, BaseModel):
     departure_time: int = Field(default=None, alias="DepartureTime")
 
 
-class AC_EVChargeParameter(EVChargeParameterType):
+class AC_EVChargeParameterType(EVChargeParameterType):
     """complexType AC_EVChargeParameterType"""
 
     # in XSD: substitutionGroup="EVChargeParameter"
@@ -330,7 +442,7 @@ class DC_EVStatusType(BaseModel):
     ev_ress_soc: bytes = Field(..., alias="EVRESSSOC")
 
 
-class DC_EVChargeParameter(EVChargeParameterType):
+class DC_EVChargeParameterType(EVChargeParameterType):
     """complexType DC_EVChargeParameterType"""
 
     # in XSD: substitutionGroup="EVChargeParameter"
@@ -532,72 +644,6 @@ class DC_EVPowerDeliveryParameterType(EVPowerDeliveryParameterType):
     # ChargingComplete, minOccurs = 1 => required
     # xs:boolean
     charging_complete: bool = Field(..., alias="ChargingComplete")
-
-
-class EVSENotificationType(str, Enum):
-    """enumerated values for EVSENotificationType"""
-
-    NONE = "None"
-    STOP_CHARGING = "StopCharging"
-    RE_NEGOTIATION = "ReNegotiation"
-
-
-class EVSEStatusType(ABC, BaseModel):
-    """complexType EVSEStatusType. Abstract class - abstract in XSD"""
-
-    # NotificationMaxDelay, minOccurs = 1 => required
-    # xs:unsignedShort
-    notification_max_delay: int = Field(..., alias="NotificationMaxDelay")
-    # EVSENotification
-    evse_notification: EVSENotificationType = Field(
-        ..., alias="EVSENotification"
-    )
-
-
-class AC_EVSEStatusType(EVSEStatusType):
-    """complexType AC_EVSEStatusType"""
-
-    # RCD
-    # xs:boolean
-    rcd: bool = Field(..., alias="RCD")
-
-
-class isolationLevelType(str, Enum):
-    """enumerated values for isolationLevelType"""
-
-    INVALID = "Invalid"
-    VALID = "Valid"
-    WARNING = "Warning"
-    FAULT = "Fault"
-    NO_IMD = "No_IMD"
-
-
-class DC_EVSEStatusCodeType(str, Enum):
-    EVSE_NOT_READY = "EVSE_NotReady"
-    EVSE_READY = "EVSE_Ready"
-    EVSE_SHUTDOWN = "EVSE_Shutdown"
-    EVSE_UTILITY_INTERRUPT_EVENT = "EVSE_UtilityInterruptEvent"
-    EVSE_ISOLATION_MONITORING_ACTIVE = "EVSE_IsolationMonitoringActive"
-    EVSE_EMERGENCY_SHUTDOWN = "EVSE_EmergencyShutdown"
-    EVSE_MALFUNCTION = "EVSE_Malfunction"
-    RESERVED_8 = "Reserved_8"
-    RESERVED_9 = "Reserved_9"
-    RESERVED_A = "Reserved_A"
-    RESERVED_B = "Reserved_B"
-    RESERVED_C = "Reserved_C"
-
-
-class DC_EVSEStatusType(EVSEStatusType):
-    """complexType DC_EVSEStatusType"""
-
-    # EVSEIsolationStatus, minOccurs = 0 => not required
-    evse_isolation_status: isolationLevelType = Field(
-        None, alias="EVSEIsolationStatus"
-    )
-    # EVSEStatusCode, minOccurs = 1 => required
-    evse_status_code: DC_EVSEStatusCodeType = Field(
-        ..., alias="EVSEStatusCode"
-    )
 
 
 class MeterInfoType(BaseModel):

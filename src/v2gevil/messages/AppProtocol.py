@@ -9,7 +9,7 @@ The implementation is based on ISO 15118-2:2014.
 
 from typing import List
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # TODO: Add information about fields from ISO 15118-2:2014
@@ -41,6 +41,8 @@ class AppProtocolType(BaseModel):
         priority: This element is used by EVCC to indicate the priority of the protocol. SECC can select the protocol based on the priority.
     """
 
+    model_config = ConfigDict(use_enum_values=True)
+
     # Three dots (...) means that the field is required and has no default value
     # ProtocolNamespaceType, is xs:anyURI in the schema, max 100 chars
     proto_ns: str = Field(..., alias="ProtocolNamespace")
@@ -64,6 +66,8 @@ class supportedAppProtocolReq(BaseModel):
             The AppProtocol element is a complex type that contains the elements ProtocolNamespace, VersionMajor, VersionMinor, SchemaID and Priority.
     """
 
+    model_config = ConfigDict(use_enum_values=True)
+
     # EVCC requests SECC with the list of protocols supported by EVCC.
     # MinOccurs = 1, MaxOccurs = 20
     app_protocol: List[AppProtocolType] = Field(..., alias="AppProtocol")
@@ -78,6 +82,8 @@ class supportedAppProtocolRes(BaseModel):
         response_code: The response code to indicate if at least one of the protocols provides by EVCC is supported by the SECC.
 
     """
+
+    model_config = ConfigDict(use_enum_values=True)
 
     response_code: responseCodeType = Field(..., alias="ResponseCode")
     # idType, is usignsignedByte in the schema, minOccur=0

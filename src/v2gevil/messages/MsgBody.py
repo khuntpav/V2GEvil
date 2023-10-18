@@ -12,8 +12,11 @@ from .MsgDataTypes import (
     SelectedServiceListType,
     CertificateChainType,
     EVSEProcessingType,
-    AC_EVChargeParameter,
-    DC_EVChargeParameter,
+    AC_EVChargeParameterType,
+    DC_EVChargeParameterType,
+    EVSEChargeParameterType,
+    AC_EVSEChargeParameterType,
+    DC_EVSEChargeParameterType,
     EnergyTransferModeType,
     SAScheduleListType,
     chargeProgressType,
@@ -104,7 +107,7 @@ class ServiceDiscoveryReq(BodyBaseType):
     service_scope: str = Field(default=None, alias="ServiceScope")
     # ServiceCategoryType, xs:string, enum values, minOccurs 0 => not required
     service_category: serviceCategoryType = Field(
-        None, alias="ServiceCategory"
+        default=None, alias="ServiceCategory"
     )
 
 
@@ -139,7 +142,7 @@ class ServiceDetailRes(BodyBaseType):
     service_id: int = Field(..., alias="ServiceID")
     # ServiceParameterListType, minOccurs 0 => not required
     service_parameter_list: ServiceParameterListType = Field(
-        None, alias="ServiceParameterList"
+        default=None, alias="ServiceParameterList"
     )
 
 
@@ -217,11 +220,11 @@ class ChargeParameterDiscoveryReq(BodyBaseType):
     # EVChargeParameter is abstract type
     # EVChargeParameterType, minOccurs 1 => required
     # at least one of these two attributes must be set
-    ac_ev_charge_parameter: AC_EVChargeParameter = Field(
-        None, alias="AC_EVChargeParameter"
+    ac_ev_charge_parameter: AC_EVChargeParameterType = Field(
+        default=None, alias="AC_EVChargeParameter"
     )
-    dc_ev_charge_parameter: DC_EVChargeParameter = Field(
-        None, alias="DC_EVChargeParameter"
+    dc_ev_charge_parameter: DC_EVChargeParameterType = Field(
+        default=None, alias="DC_EVChargeParameter"
     )
 
 
@@ -239,11 +242,11 @@ class ChargeParameterDiscoveryRes(BodyBaseType):
     # EVChargeParameter is abstract type
     # EVChargeParameterType, minOccurs 1 => required
     # at least one of these two attributes must be set
-    ac_ev_charge_parameter: AC_EVChargeParameter = Field(
-        None, alias="AC_EVChargeParameter"
+    ac_ev_charge_parameter: AC_EVSEChargeParameterType = Field(
+        default=None, alias="AC_EVSEChargeParameter"
     )
-    dc_ev_charge_parameter: DC_EVChargeParameter = Field(
-        None, alias="DC_EVChargeParameter"
+    dc_ev_charge_parameter: DC_EVSEChargeParameterType = Field(
+        default=None, alias="DC_EVSEChargeParameter"
     )
 
 
@@ -259,12 +262,12 @@ class PowerDeliveryReq(BodyBaseType):
     # ChargingProfile, minOccurs 0 => not required
     # ChargingProfileType,
     charging_profile: ChargingProfileType = Field(
-        None, alias="ChargingProfile"
+        default=None, alias="ChargingProfile"
     )
     # EVPowerDeliveryParameter (abstract), minOccurs 0 => not required
     # DC_EVPowerDeliveryParameterType
     dc_ev_power_delivery_parameter: DC_EVPowerDeliveryParameterType = Field(
-        None, alias="DC_EVPowerDeliveryParameter"
+        default=None, alias="DC_EVPowerDeliveryParameter"
     )
 
 
@@ -534,12 +537,12 @@ class CurrentDemandReq(BodyBaseType):
     # EVMaximumVoltageLimit, minOccurs 0 => not required
     # PhysicalValueType
     ev_maximum_voltage_limit: PhysicalValueType = Field(
-        None, alias="EVMaximumVoltageLimit"
+        default=None, alias="EVMaximumVoltageLimit"
     )
     # EVMaximumPowerLimit, minOccurs 0 => not required
     # PhysicalValueType
     ev_maximum_power_limit: PhysicalValueType = Field(
-        None, alias="EVMaximumPowerLimit"
+        default=None, alias="EVMaximumPowerLimit"
     )
     # BulkChargingComplete, minOccurs 0 => not required
     # xs:boolean
@@ -552,12 +555,12 @@ class CurrentDemandReq(BodyBaseType):
     # RemainingTimeToFullSoC, minOccurs 0 => not required
     # PhysicalValueType
     remaining_time_to_full_soc: PhysicalValueType = Field(
-        None, alias="RemainingTimeToFullSoC"
+        default=None, alias="RemainingTimeToFullSoC"
     )
     # RemainingTimeToBulkSoC, minOccurs 0 => not required
     # PhysicalValueType
     remaining_time_to_bulk_soc: PhysicalValueType = Field(
-        None, alias="RemainingTimeToBulkSoC"
+        default=None, alias="RemainingTimeToBulkSoC"
     )
     # EVTargetVoltage, minOccurs 1 => required
     # PhysicalValueType
@@ -601,17 +604,17 @@ class CurrentDemandRes(BodyBaseType):
     # EVSEMaximumVoltageLimit, minOccurs 0 => not required
     # PhysicalValueType
     evse_maximum_voltage_limit: PhysicalValueType = Field(
-        None, alias="EVSEMaximumVoltageLimit"
+        default=None, alias="EVSEMaximumVoltageLimit"
     )
     # EVSEMaximumCurrentLimit, minOccurs 0 => not required
     # PhysicalValueType
     evse_maximum_current_limit: PhysicalValueType = Field(
-        None, alias="EVSEMaximumCurrentLimit"
+        default=None, alias="EVSEMaximumCurrentLimit"
     )
     # EVSEMaximumPowerLimit, minOccurs 0 => not required
     # PhysicalValueType
     evse_maximum_power_limit: PhysicalValueType = Field(
-        None, alias="EVSEMaximumPowerLimit"
+        default=None, alias="EVSEMaximumPowerLimit"
     )
     # EVSEID, minOccurs 1 => required
     # evseIDType => xs:string, minLength 7, maxLength 37
@@ -682,34 +685,34 @@ class Body(BaseModel):
 
     # ServiceDiscovery
     service_discovery_req: ServiceDiscoveryReq = Field(
-        None, alias="ServiceDiscoveryReq"
+        default=None, alias="ServiceDiscoveryReq"
     )
     service_discovery_res: ServiceDiscoveryRes = Field(
-        None, alias="ServiceDiscoveryRes"
+        default=None, alias="ServiceDiscoveryRes"
     )
 
     # ServiceDetail
     service_detail_req: ServiceDetailReq = Field(
-        None, alias="ServiceDetailReq"
+        default=None, alias="ServiceDetailReq"
     )
     service_detail_res: ServiceDetailRes = Field(
-        None, alias="ServiceDetailRes"
+        default=None, alias="ServiceDetailRes"
     )
 
     # PaymentServiceSelection
     payment_service_sel_req: PaymentServiceSelectionReq = Field(
-        None, alias="PaymentServiceSelectionReq"
+        default=None, alias="PaymentServiceSelectionReq"
     )
     payment_service_sel_res: PaymentServiceSelectionRes = Field(
-        None, alias="PaymentServiceSelectionRes"
+        default=None, alias="PaymentServiceSelectionRes"
     )
 
     # PaymentDetails
     payment_details_req: PaymentDetailsReq = Field(
-        None, alias="PaymentDetailsReq"
+        default=None, alias="PaymentDetailsReq"
     )
     payment_details_res: PaymentDetailsRes = Field(
-        None, alias="PaymentDetailsRes"
+        default=None, alias="PaymentDetailsRes"
     )
 
     # Authorization
@@ -722,26 +725,26 @@ class Body(BaseModel):
 
     # ChargeParameterDiscovery
     charge_param_discovery_req: ChargeParameterDiscoveryReq = Field(
-        None, alias="ChargeParameterDiscoveryReq"
+        default=None, alias="ChargeParameterDiscoveryReq"
     )
     charge_param_discovery_res: ChargeParameterDiscoveryRes = Field(
-        None, alias="ChargeParameterDiscoveryRes"
+        default=None, alias="ChargeParameterDiscoveryRes"
     )
 
     # PowerDelivery
     power_delivery_req: PowerDeliveryReq = Field(
-        None, alias="PowerDeliveryReq"
+        default=None, alias="PowerDeliveryReq"
     )
     power_delivery_res: PowerDeliveryRes = Field(
-        None, alias="PowerDeliveryRes"
+        default=None, alias="PowerDeliveryRes"
     )
 
     # MeteringReceipt
     metering_receipt_req: MeteringReceiptReq = Field(
-        None, alias="MeteringReceiptReq"
+        default=None, alias="MeteringReceiptReq"
     )
     metering_receipt_res: MeteringReceiptRes = Field(
-        None, alias="MeteringReceiptRes"
+        default=None, alias="MeteringReceiptRes"
     )
 
     # SessionStop
@@ -754,28 +757,28 @@ class Body(BaseModel):
 
     # CertificateUpdate
     certificate_update_req: CertificateUpdateReq = Field(
-        None, alias="CertificateUpdateReq"
+        default=None, alias="CertificateUpdateReq"
     )
     certificate_update_res: CertificateUpdateRes = Field(
-        None, alias="CertificateUpdateRes"
+        default=None, alias="CertificateUpdateRes"
     )
 
     # CertificateInstallation
     certificate_installation_req: CertificateInstallationReq = Field(
-        None, alias="CertificateInstallationReq"
+        default=None, alias="CertificateInstallationReq"
     )
     certificate_installation_res: CertificateInstallationRes = Field(
-        None, alias="CertificateInstallationRes"
+        default=None, alias="CertificateInstallationRes"
     )
     # Common Messages (AC/DC) - END
 
     # AC Messages - START
     # ChargingStatus
     charging_status_req: ChargingStatusReq = Field(
-        None, alias="ChargingStatusReq"
+        default=None, alias="ChargingStatusReq"
     )
     charging_status_res: ChargingStatusRes = Field(
-        None, alias="ChargingStatusRes"
+        default=None, alias="ChargingStatusRes"
     )
     # AC Messages - END
 
@@ -790,17 +793,17 @@ class Body(BaseModel):
 
     # CurrentDemand
     current_demand_req: CurrentDemandReq = Field(
-        None, alias="CurrentDemandReq"
+        default=None, alias="CurrentDemandReq"
     )
     current_demand_res: CurrentDemandRes = Field(
-        None, alias="CurrentDemandRes"
+        default=None, alias="CurrentDemandRes"
     )
 
     # WeldingDetection
     welding_detection_req: WeldingDetectionReq = Field(
-        None, alias="WeldingDetectionReq"
+        default=None, alias="WeldingDetectionReq"
     )
     welding_detection_res: WeldingDetectionRes = Field(
-        None, alias="WeldingDetectionRes"
+        default=None, alias="WeldingDetectionRes"
     )
     # DC Messages - END
