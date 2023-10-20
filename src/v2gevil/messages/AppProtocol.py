@@ -72,6 +72,15 @@ class supportedAppProtocolReq(BaseModel):
     # MinOccurs = 1, MaxOccurs = 20
     app_protocol: List[AppProtocolType] = Field(..., alias="AppProtocol")
 
+    @classmethod
+    def response_class_name(cls) -> str:
+        """Return the name of the request class.
+
+        Returns:
+            str: The name of the request class.
+        """
+        return cls.__name__.replace("Req", "Res")
+
 
 class supportedAppProtocolRes(BaseModel):
     """Message supportedAppProtocolRes.
@@ -88,3 +97,12 @@ class supportedAppProtocolRes(BaseModel):
     response_code: responseCodeType = Field(..., alias="ResponseCode")
     # idType, is usignsignedByte in the schema, minOccur=0
     schema_id: str = Field(default=None, alias="SchemaID")
+
+    @classmethod
+    def request_class_name(cls) -> str:
+        """Return the name of the request class.
+
+        Returns:
+            str: The name of the request class.
+        """
+        return cls.__name__.replace("Res", "Req")

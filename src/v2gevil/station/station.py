@@ -54,6 +54,10 @@ class ServerManager:
         ),
         tls_flag: bool = False,
         accept_security: bool = False,
+        # TODO: Add config dict, which will be used to configure the station
+        # which content in the V2G responses should be
+        # TODO: also implement method load_config_dict from file, loading json
+        # or yaml file, probably json
     ):
         """
         Initialize Server Manager.
@@ -280,9 +284,15 @@ class ServerManager:
                 if not data:
                     break
                 print(f"Received from client: {data}")
-                # TODO: Add routine for V2GTP communication
+                # TODO: forward the config dict to V2GTPMessage
+                # and make all work in V2GTPMessage
+                v2gtp_req = V2GTPMessage(data)
+                # TODO: v2gtp_req.create_response()
+                v2gtp_res = v2gtp_req.create_response()
+                # TODO: response_message = v2gtp_res
                 response_message = b"Hello from Server"
                 conn.sendall(response_message)
+                # TODO: Maybe add del for v2gtp_req and v2gtp_res instances
         except Exception as error:
             print(f"Error processing TCP data: {error}")
         finally:
@@ -290,13 +300,15 @@ class ServerManager:
             conn.close()  # Close the connection when done
 
 
-def start_async(interface: str = "eth_station"):
+def start_async(interface: str = "eth_station", accept_security: bool = False):
     """Start station.
 
     To handle stop of SDP server after TCP connection is established,
     it's necessary to use asyncio."""
 
-    manager = ServerManager(interface=interface)
+    manager = ServerManager(
+        interface=interface, accept_security=accept_security
+    )
     asyncio.run(manager.start())
 
 

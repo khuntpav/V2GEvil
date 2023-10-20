@@ -62,13 +62,23 @@ class BodyBaseType(ABC, BaseModel):
     #    """Config class for BodyBaseType."""
     #
     #    use_enum_values = True
-    def response_class_name(self) -> str:
+    @classmethod
+    def response_class_name(cls) -> str:
         """Return the name of the response class.
 
         Returns:
             str: The name of the response class.
         """
-        return self.__class__.__name__.replace("Req", "Res")
+        return cls.__name__.replace("Req", "Res")
+
+    @classmethod
+    def request_class_name(cls) -> str:
+        """Return the name of the request class.
+
+        Returns:
+            str: The name of the request class.
+        """
+        return cls.__name__.replace("Res", "Req")
 
 
 """Here I need to define all types of messages as classes. Inherits from BodyBaseType.
@@ -191,8 +201,10 @@ class PaymentDetailsRes(BodyBaseType):
 class AuthorizationReq(BodyBaseType):
     """Representation of V2GMessage AuthorizationReq."""
 
-    # Id, xs:ID
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Id, xs:ID, attribute in XSD not element => need to add @
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # genChallengeType, xs:base64Binary, length 16, minOccurs 0 => required
     gen_challenge: str = Field(default=None, alias="GenChallenge")
 
@@ -229,7 +241,11 @@ class ChargeParameterDiscoveryReq(BodyBaseType):
 
 
 class ChargeParameterDiscoveryRes(BodyBaseType):
-    """Representation of V2GMessage ChargeParameterDiscoveryRes."""
+    """Representation of V2GMessage ChargeParameterDiscoveryRes.
+
+    At least one of these two attributes
+    (AC_EVSEChargeParameter, DC_EVSEChargeParameter) must be set
+    """
 
     # responseCodeType, enum values, minOccurs 1 => required
     response_code: responseCodeType = Field(..., alias="ResponseCode")
@@ -258,7 +274,7 @@ class PowerDeliveryReq(BodyBaseType):
     charge_progress: chargeProgressType = Field(..., alias="ChargeProgress")
     # SAScheduleTupleID, minOccurs 1 => required
     # SAIDType, xs:unsignedByte, minInclusive 1, maxInclusive 255
-    sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
+    sa_schedule_tuple_id: int = Field(..., alias="SAScheduleTupleID")
     # ChargingProfile, minOccurs 0 => not required
     # ChargingProfileType,
     charging_profile: ChargingProfileType = Field(
@@ -292,16 +308,16 @@ class PowerDeliveryRes(BodyBaseType):
 class MeteringReceiptReq(BodyBaseType):
     """Representation of V2GMessage MeteringReceiptReq."""
 
-    # Id, xs:ID
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Id, xs:ID, attribute in XSD not element => need to add @
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # SessionID,
     # sessionIDType, xs:hexbinary, maxlength 8
     session_id: str = Field(..., alias="SessionID")
     # SAScheduleTupleID, minOccurs 0 => not required
     # SAIDType, xs:unsignedByte, minInclusive 1, maxInclusive 255
-    sa_schedule_tuple_id: bytes = Field(
-        default=None, alias="SAScheduleTupleID"
-    )
+    sa_schedule_tuple_id: int = Field(default=None, alias="SAScheduleTupleID")
     # MeterInfo, minOccurs 1 => required
     # MeterInfoType
     meter_info: MeterInfoType = Field(..., alias="MeterInfo")
@@ -351,8 +367,10 @@ class SessionStopRes(BodyBaseType):
 class CertificateUpdateReq(BodyBaseType):
     """Representation of V2GMessage CertificateUpdateReq."""
 
-    # Id, xs:ID
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Id, xs:ID, attribute in XSD not element => need to add @
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # ContractSignatureCertChain, minOccurs 1 => required
     contract_signature_cert_chain: CertificateChainType = Field(
         ..., alias="ContractSignatureCertChain"
@@ -396,8 +414,10 @@ class CertificateUpdateRes(BodyBaseType):
 class CertificateInstallationReq(BodyBaseType):
     """Representation of V2GMessage CertificateInstallationReq."""
 
-    # attribute Id, xs:ID
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Id, xs:ID, attribute in XSD not element => need to add @
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # OEMProvisioningCert, minOccurs 1 => required
     # certificateType => xs:base64Binary, maxLength 800
     oem_provisioning_cert: str = Field(..., alias="OEMProvisioningCert")
@@ -455,7 +475,7 @@ class ChargingStatusRes(BodyBaseType):
     evse_id: str = Field(..., alias="EVSEID")
     # SAScheduleTupleID, minOccurs 1 => required
     # SAIDType => xs:unsignedByte, minInclusive 1, maxInclusive 255
-    sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
+    sa_schedule_tuple_id: int = Field(..., alias="SAScheduleTupleID")
     # EVSEMaxCurrent, minOccurs 0 => not required
     # PhysicalValueType
     evse_max_current: PhysicalValueType = Field(
@@ -621,7 +641,7 @@ class CurrentDemandRes(BodyBaseType):
     evse_id: str = Field(..., alias="EVSEID")
     # SAScheduleTupleID, minOccurs 1 => required
     # SAIDType => xs:unsignedByte, minInclusive 1, maxInclusive 255
-    sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
+    sa_schedule_tuple_id: int = Field(..., alias="SAScheduleTupleID")
     # MeterInfo, minOccurs 0 => not required
     # MeterInfoType
     meter_info: MeterInfoType = Field(default=None, alias="MeterInfo")

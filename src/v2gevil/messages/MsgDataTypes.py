@@ -106,13 +106,20 @@ class PhysicalValueType(BaseModel):
 class ParameterType(BaseModel):
     """ComplexType ParameterType."""
 
-    # name, xs:string
-    name: str = Field(..., alias="Name")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # name, xs:string, in XSD is defined as attribute => need to add
+    # populating by name in ConfigDict and serialization and validation alias
+    # instead of alias, if only alias is used, it's working but pylance is complaining
+    name: str = Field(
+        ..., serialization_alias="@Name", validation_alias="@Name"
+    )
     # From attributes below is used only one, cause in XSD is defined as choice
     # type, xs:boolean
     bool_value: bool = Field(default=None, alias="boolValue")
-    # type, xs:byte
-    byte_value: bytes = Field(default=None, alias="byteValue")
+    # type, xs:byte -> is a signed 8-bit integer data type.
+    # It represents whole numbers in the range from -128 to 127.
+    byte_value: int = Field(default=None, alias="byteValue")
     # type, xs:short
     short_value: int = Field(default=None, alias="shortValue")
     # type, xs:int
@@ -257,8 +264,12 @@ class SubCertificatesType(BaseModel):
 class CertificateChainType(BaseModel):
     """ComplexType CertificateChainType."""
 
-    # attribute Id, xs:ID
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # attribute Id, xs:ID, in XSD is defined as attribute => need to add
+    # populating by name in ConfigDict and serialization and validation alias
+    # instead of alias, if only alias is used, it's working but pylance is complaining
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # certificateType, minOccurs = 1 => required
     # certificateType is xs:base64Binary, maxLength 800
     # base64 encoded certificate, certificate in bytes
@@ -439,7 +450,7 @@ class DC_EVStatusType(BaseModel):
     ev_error_code: DC_EVErrorCodeType = Field(..., alias="EVErrorCode")
     # EVRESSSOC" type="percentValueType"
     # percentValueType => xs:byte, minInclusive value="0", maxInclusive value="100"
-    ev_ress_soc: bytes = Field(..., alias="EVRESSSOC")
+    ev_ress_soc: int = Field(..., alias="EVRESSSOC")
 
 
 class DC_EVChargeParameterType(EVChargeParameterType):
@@ -470,10 +481,10 @@ class DC_EVChargeParameterType(EVChargeParameterType):
     )
     # FullSOC type="percentValueType" minOccurs="0"
     # percentValueType => xs:byte, minInclusive value="0", maxInclusive value="100"
-    full_soc: bytes = Field(default=None, alias="FullSOC")
+    full_soc: int = Field(default=None, alias="FullSOC")
     # BulkSOC type="percentValueType" minOccurs="0"
     # percentValueType => xs:byte, minInclusive value="0", maxInclusive value="100"
-    bulk_soc: bytes = Field(default=None, alias="BulkSOC")
+    bulk_soc: int = Field(default=None, alias="BulkSOC")
 
 
 class IntervalType(ABC, BaseModel):
@@ -526,7 +537,7 @@ class CostType(BaseModel):
     # xs:unsignedInt, minOccurs = 1 => required
     amount: int = Field(..., alias="amount")
     # unitMultiplierType, xs:byte, minInclusive value="-3", maxInclusive value="3"
-    amount_multiplier: bytes = Field(..., alias="amountMultiplier")
+    amount_multiplier: int = Field(..., alias="amountMultiplier")
 
 
 class ConsumptionCostType(BaseModel):
@@ -552,8 +563,10 @@ class SalesTariffEntryType(BaseModel):
 class SalesTariffType(BaseModel):
     """complexType SalesTariffType"""
 
-    # xs:ID, Id
-    id: int = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # xs:ID, Id, attribute in XSD => need to add
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # SalesTariffID, xs:unsignedByte, minInclusive value="1", maxInclusive value="255"
     sales_tariff_id: int = Field(..., alias="SalesTariffID")
     # SalesTariffDescription, minOccurs = 0 => not required
@@ -575,7 +588,7 @@ class SAScheduleTupleType(BaseModel):
 
     # SAScheduleTupleID,
     # SAIDType =>  xs:unsignedByte, minInclusive value="1", maxInclusive value="255"
-    sa_schedule_tuple_id: bytes = Field(..., alias="SAScheduleTupleID")
+    sa_schedule_tuple_id: int = Field(..., alias="SAScheduleTupleID")
     # PMaxSchedule
     p_max_schedule: PMaxScheduleType = Field(..., alias="PMaxSchedule")
     # SalesTariff, minOccurs = 0 => not required
@@ -614,7 +627,7 @@ class ProfileEntryType(BaseModel):
     )
     # ChargingProfileEntryMaxNumberOfPhasesInUse, minOccurs = 0 => not required
     # xs:byte, minInclusive value="1", maxInclusive value="3"
-    charging_profile_entry_max_number_of_phases_in_use: bytes = Field(
+    charging_profile_entry_max_number_of_phases_in_use: int = Field(
         None, alias="ChargingProfileEntryMaxNumberOfPhasesInUse"
     )
 
@@ -699,9 +712,12 @@ class ContractSignatureEncryptedPrivateKeyType(privateKeyType):
     """is extension of privateKeyType"""
 
     # Id, xs:ID, it's a attribute in XSD not element
-    # There will be need to handle all of the attributes in all of the classes
-    # to be able to print it in XML properly
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # attribute Id, xs:ID, in XSD is defined as attribute => need to add
+    # populating by name in ConfigDict and serialization and validation alias
+    # instead of alias, if only alias is used, it's working but pylance is complaining
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
 
 
 class dHpublickeyType(ABC, BaseModel):
@@ -717,12 +733,13 @@ class dHpublickeyType(ABC, BaseModel):
 class DiffieHellmanPublickeyType(dHpublickeyType):
     """is extension of dHpublickeyType"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
+    # attribute Id, xs:ID, in XSD is defined as attribute => need to add
+    # populating by name in ConfigDict and serialization and validation alias
+    # instead of alias, if only alias is used, it's working but pylance is complaining
     # Id, xs:ID, it's a attribute in XSD not element
-    # There will be need to handle all of the attributes in all of the classes
-    # to be able to print it in XML properly
-    # TODO: Maybe attributes in XSD mark as _id or something like that
-    #       to easily distinguish between attributes and elements
-    id: str = Field(..., alias="Id")
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
 
 
 class eMAIDType(ABC, BaseModel):
@@ -738,4 +755,10 @@ class eMAIDType(ABC, BaseModel):
 class EMAIDType(eMAIDType):
     """is extension of eMAIDType"""
 
-    id: str = Field(..., alias="Id")
+    model_config = ConfigDict(populate_by_name=True)
+
+    # attribute Id, xs:ID, in XSD is defined as attribute => need to add
+    # populating by name in ConfigDict and serialization and validation alias
+    # instead of alias, if only alias is used, it's working but pylance is complaining
+    # Id, xs:ID, it's a attribute in XSD not element
+    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
