@@ -2,9 +2,11 @@
 
 import logging
 import xml.etree.ElementTree as ET
+import requests
 import json
 import xmltodict
 import time
+from typing import Union
 
 
 from .MsgDef import V2G_Message, Header, Body
@@ -31,6 +33,7 @@ from .namespace_map import namespace_map
 logger = logging.getLogger(__name__)
 
 
+# TODO: Move it to the testing file in tests
 def testing():
     """Testing"""
 
@@ -140,26 +143,71 @@ def testing_xml2class_instance():
     # supportedAppProtocolReq as xml
     xml1 = """<?xml version="1.0" encoding="utf-8"?><n1:supportedAppProtocolReq xsi:schemaLocation="urn:iso:15118:2:2010:AppProtocol ../V2G_CI_AppProtocol.xsd" xmlns:n1="urn:iso:15118:2:2010:AppProtocol" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><AppProtocol><ProtocolNamespace>urn:iso:15118:2:2013:MsgDef</ProtocolNamespace><VersionMajor>2</VersionMajor><VersionMinor>0</VersionMinor><SchemaID>10</SchemaID><Priority>1</Priority></AppProtocol><AppProtocol><ProtocolNamespace>urn:iso:15118:2:2010:MsgDef</ProtocolNamespace><VersionMajor>1</VersionMajor><VersionMinor>0</VersionMinor><SchemaID>20</SchemaID><Priority>2</Priority></AppProtocol></n1:supportedAppProtocolReq>"""
 
-    # dict_data1 = xml2class_instance(xml1)
+    obj = xml2class_instance(xml1)
+    print(obj.__class__.__name__)
     # print(type(dict_data1))
 
     # v2g_message ->  as xml
     xml2 = """<?xml version="1.0" encoding="utf-8"?><v2gci_d:V2G_Message xmlns:v2gci_b="urn:iso:15118:2:2013:MsgBody" xmlns:xmlsig="http://www.w3.org/2000/09/xmldsig#" xmlns:v2gci_d="urn:iso:15118:2:2013:MsgDef" xmlns:v2gci_t="urn:iso:15118:2:2013:MsgDataTypes" xmlns:v2gci_h="urn:iso:15118:2:2013:MsgHeader" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><v2gci_d:Header><v2gci_h:SessionID>12345678</v2gci_h:SessionID></v2gci_d:Header><v2gci_d:Body><v2gci_b:SessionStopRes><v2gci_b:ResponseCode>OK</v2gci_b:ResponseCode></v2gci_b:SessionStopRes></v2gci_d:Body></v2gci_d:V2G_Message>"""
 
-    # dict_data2 = xml2class_instance(xml2)
+    print(xml2exi(xml2))
+    print(bytes.fromhex(xml2exi(xml2)))
+
+    obj = xml2class_instance(xml2)
+    dict_dataa = obj.model_dump(by_alias=True, exclude_unset=True)
+    body_dump = obj.body.model_dump(by_alias=True, exclude_unset=True)
+    print(dict_dataa)
+    print("Field")
+    field = list(obj.body.model_fields_set)[0]
+    print(field)
+    attribute = getattr(obj.body, field)
+    # Later to create a dictionary for all classes of Req and Res
+    print(attribute.model_dump(by_alias=True, exclude_unset=False))
+    print(type(attribute))
+    print("Printing attribute")
+    print(attribute)
+
+    a = Body(**body_dump)
+    print("Printing a")
+    print(a.model_dump(by_alias=True, exclude_unset=True))
+
+    body_type_res = str(attribute)
+
+    # Dictionary for mapping request to response
+    session_id = "0101202"
+    header_res = Header(SessionID=session_id)
+    responses = {"SessionStopReq": {"SessionStopRes": {"ResponseCode": "OK"}}}
+    body_res = Body(**responses["SessionStopReq"])
+    msg = V2G_Message(Header=header_res, Body=body_res)
+    print("Printing body_res")
+    print(body_res.model_dump(by_alias=True, exclude_unset=True))
+    print("Printing msg")
+    print(msg.model_dump(by_alias=True, exclude_unset=True))
+    print("Exiting body res")
+
+    # TO get dictionary => put them in the file for all classes of Req and Res
+    # then can be just filled will values
+    trala = attribute.model_dump(by_alias=True, exclude_unset=False)
+    print(trala)
+
+    dict_dataa = obj.model_dump(by_alias=True, exclude_unset=True)
+    print(dict_dataa)
+    exit()
+    hello = V2G_Message(**dict_dataa)
     # print(type(dict_data2))
 
-    # ServiceDiscoveryRes as xml with only one Service in SeviceList
-    # Cause problem => ServiceList is not a list when xmltodict.parse() is used
-    # TODO
     xml3 = """<?xml version="1.0" encoding="utf-8"?><v2gci_d:V2G_Message xmlns:v2gci_b="urn:iso:15118:2:2013:MsgBody" xmlns:xmlsig="http://www.w3.org/2000/09/xmldsig#" xmlns:v2gci_d="urn:iso:15118:2:2013:MsgDef" xmlns:v2gci_t="urn:iso:15118:2:2013:MsgDataTypes" xmlns:v2gci_h="urn:iso:15118:2:2013:MsgHeader" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><v2gci_d:Header><v2gci_h:SessionID>678</v2gci_h:SessionID></v2gci_d:Header><v2gci_d:Body><v2gci_b:ServiceDiscoveryRes><v2gci_b:ResponseCode>OK</v2gci_b:ResponseCode><v2gci_b:PaymentOptionList><v2gci_t:PaymentOption>Contract</v2gci_t:PaymentOption><v2gci_t:PaymentOption>ExternalPayment</v2gci_t:PaymentOption></v2gci_b:PaymentOptionList><v2gci_b:ChargeService><v2gci_t:ServiceID>2</v2gci_t:ServiceID><v2gci_t:ServiceName>AC charging</v2gci_t:ServiceName><v2gci_t:ServiceCategory>EVCharging</v2gci_t:ServiceCategory><v2gci_t:ServiceScope>Service Scope value</v2gci_t:ServiceScope><v2gci_t:FreeService>true</v2gci_t:FreeService><v2gci_t:SupportedEnergyTransferMode><v2gci_t:EnergyTransferMode>AC_single_phase_core</v2gci_t:EnergyTransferMode><v2gci_t:EnergyTransferMode>AC_three_phase_core</v2gci_t:EnergyTransferMode></v2gci_t:SupportedEnergyTransferMode></v2gci_b:ChargeService><v2gci_b:ServiceList><v2gci_t:Service><v2gci_t:ServiceID>2</v2gci_t:ServiceID><v2gci_t:ServiceName>AC charging</v2gci_t:ServiceName><v2gci_t:ServiceCategory>EVCharging</v2gci_t:ServiceCategory><v2gci_t:ServiceScope>Service Scope value</v2gci_t:ServiceScope><v2gci_t:FreeService>true</v2gci_t:FreeService></v2gci_t:Service></v2gci_b:ServiceList></v2gci_b:ServiceDiscoveryRes></v2gci_d:Body></v2gci_d:V2G_Message>"""
-    dict_data3 = xml2class_instance(xml3)
+    obj = xml2class_instance(xml3)
+    print(obj.__class__.__name__)
 
     xml4 = """<?xml version="1.0" encoding="utf-8"?><v2gci_d:V2G_Message xmlns:v2gci_b="urn:iso:15118:2:2013:MsgBody" xmlns:xmlsig="http://www.w3.org/2000/09/xmldsig#" xmlns:v2gci_d="urn:iso:15118:2:2013:MsgDef" xmlns:v2gci_t="urn:iso:15118:2:2013:MsgDataTypes" xmlns:v2gci_h="urn:iso:15118:2:2013:MsgHeader" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><v2gci_d:Header><v2gci_h:SessionID>678</v2gci_h:SessionID></v2gci_d:Header><v2gci_d:Body><v2gci_b:ServiceDiscoveryRes><v2gci_b:ResponseCode>OK</v2gci_b:ResponseCode><v2gci_b:PaymentOptionList><v2gci_t:PaymentOption>Contract</v2gci_t:PaymentOption><v2gci_t:PaymentOption>ExternalPayment</v2gci_t:PaymentOption></v2gci_b:PaymentOptionList><v2gci_b:ChargeService><v2gci_t:ServiceID>2</v2gci_t:ServiceID><v2gci_t:ServiceName>AC charging</v2gci_t:ServiceName><v2gci_t:ServiceCategory>EVCharging</v2gci_t:ServiceCategory><v2gci_t:ServiceScope>Service Scope value</v2gci_t:ServiceScope><v2gci_t:FreeService>true</v2gci_t:FreeService><v2gci_t:SupportedEnergyTransferMode><v2gci_t:EnergyTransferMode>AC_single_phase_core</v2gci_t:EnergyTransferMode><v2gci_t:EnergyTransferMode>AC_three_phase_core</v2gci_t:EnergyTransferMode></v2gci_t:SupportedEnergyTransferMode></v2gci_b:ChargeService><v2gci_b:ServiceList><v2gci_t:Service><v2gci_t:ServiceID>2</v2gci_t:ServiceID><v2gci_t:ServiceName>AC charging</v2gci_t:ServiceName><v2gci_t:ServiceCategory>EVCharging</v2gci_t:ServiceCategory><v2gci_t:ServiceScope>Service Scope value</v2gci_t:ServiceScope><v2gci_t:FreeService>true</v2gci_t:FreeService></v2gci_t:Service><v2gci_t:Service><v2gci_t:ServiceID>3</v2gci_t:ServiceID><v2gci_t:ServiceName>DC charging</v2gci_t:ServiceName><v2gci_t:ServiceCategory>EVCharging</v2gci_t:ServiceCategory><v2gci_t:ServiceScope>Service Scope value</v2gci_t:ServiceScope><v2gci_t:FreeService>true</v2gci_t:FreeService></v2gci_t:Service></v2gci_b:ServiceList></v2gci_b:ServiceDiscoveryRes></v2gci_d:Body></v2gci_d:V2G_Message>"""
-    dict_data3 = xml2class_instance(xml4)
+    obj = xml2class_instance(xml4)
+    print(obj.__class__.__name__)
 
 
-def xml2class_instance(xml: str):
+def xml2class_instance(
+    xml: str,
+) -> Union[V2G_Message, supportedAppProtocolReq, supportedAppProtocolRes]:
     """Converts XML to a class instance.
 
     Args:
@@ -168,327 +216,82 @@ def xml2class_instance(xml: str):
     Returns:
         class: Class instance.
     """
-    # xml = """<?xml version="1.0" encoding="UTF-8"?>
-    # <v2gci_d:V2G_Message xmlns:v2gci_h="urn:iso:15118:2:2013:MsgHeader"
-    # xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
-    # xmlns:v2gci_b="urn:iso:15118:2:2013:MsgBody"
-    # xmlns:v2gci_d="urn:iso:15118:2:2013:MsgDef"
-    # xmlns:v2gci_t="urn:iso:15118:2:2013:MsgDataTypes"
-    # xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    # <v2gci_d:Header>
-    # <v2gci_h:SessionID>3031323334353637</v2gci_h:SessionID>
-    # </v2gci_d:Header>
-    # <v2gci_d:Body>
-    # <v2gci_b:ServiceDetailReq>
-    # <v2gci_b:ServiceID>2</v2gci_b:ServiceID>
-    # </v2gci_b:ServiceDetailReq>
-    # </v2gci_d:Body>
-    # </v2gci_d:V2G_Message>"""
 
-    # Testing xmltodict library #
+    # None => to remove the namespace
     xmltodict_namespaces = {
-        "urn:iso:15118:2:2013:MsgBody": None,
-        "http://www.w3.org/2000/09/xmldsig#": None,
         "urn:iso:15118:2:2013:MsgDef": None,
-        "urn:iso:15118:2:2013:MsgDataTypes": None,
         "urn:iso:15118:2:2013:MsgHeader": None,
+        "urn:iso:15118:2:2013:MsgBody": None,
+        "urn:iso:15118:2:2013:MsgDataTypes": None,
+        "urn:iso:15118:2:2010:AppProtocol": None,
         "http://www.w3.org/2001/XMLSchema-instance": None,
+        "http://www.w3.org/2000/09/xmldsig#": None,
     }
 
     # Easily delete namespaces from XML => NO NEED FOR any delete_unwanted_prefixes_from_keys_rec
     # At the same time, it deletes namespace attributes from root element
     # And also force_list solve the proble with only one service in the Service list
-    # TODO: Any list should be added to the force_list, cause it will prevent from pydantic error
-    # because by default for one item it will not create list with one item
+    # Any list (from MsgDataTypes) should be added to the force_list,
+    # because it will prevent from pydantic error
+    # by default for one item it will not create list with one item => pydantic error
     dict_data = xmltodict.parse(
         xml,
         dict_constructor=dict,
         process_namespaces=True,
         namespaces=xmltodict_namespaces,
-        force_list=("Service"),
+        force_list=(
+            "SelectedService",
+            "Parameter",
+            "PaymentOption",
+            "Service",
+            "EnergyTransferMode",
+            "ParameterSet",
+            "Certificate",
+            "PMaxScheduleEntry",
+            "Cost",
+            "ConsumptionCost",
+            "SalesTariffEntry",
+            "SAScheduleTuple",
+            "ProfileEntry",
+        ),
     )
-
-    print(dict_data)
 
     root_element = list(dict_data.keys())[0]
     dict_data = dict_data[root_element]
-    print(dict_data)
 
-    model = V2G_Message.model_validate(dict_data)
+    # Check if it's V2G_Message or supportedAppProtocolReq/Res
+    # Then creates a corresponding instance of the class
+    # whose name is the root element of the dictionary
+    if root_element == "V2G_Message":
+        # V2G_Message
+        # Convert dict to class instance
+        # V2G_Message.model_validate(dict_data) almost same, boht create class instance
+        obj = V2G_Message(**dict_data)
+        print(obj)
+        print(type(obj))
+        print(100 * "-")
+        return obj
 
-    print(model)
+    if root_element == "supportedAppProtocolReq":
+        # supportedAppProtocolReq
+        # Convert dict to class instance
+        obj = supportedAppProtocolReq(**dict_data)
+        print(obj)
+        print(type(obj))
+        print(100 * "-")
+        return obj
 
-    # Testing xmltodict library #
-    exit()
+    if root_element == "supportedAppProtocolRes":
+        # supportedAppProtocolRes
+        # Convert dict to class instance
+        obj = supportedAppProtocolRes(**dict_data)
+        print(obj)
+        print(type(obj))
+        print(100 * "-")
+        return obj
 
-    # Convert XML to data in dictionary => type dict
-    dict_data = xmltodict.parse(xml, dict_constructor=dict)
-    copy_dict_data = xmltodict.parse(xml, dict_constructor=dict)
-
-    # Convert dictionary to JSON => type str
-    # json_data = json.dumps(dict_data)
-
-    logger.debug("Printing XML data converted to dictionary")
-    logger.debug(dict_data)
-    logger.debug(type(dict_data))
-    # logger.debug("Printing XML data converted to JSON")
-    # logger.debug(json_data)
-    # logger.debug(type(json_data))
-    # working with json - testing
-    # print(json_data.replace("@xmlns:", ""))
-
-    # Get first key of the dictionary => root element in XML
-    # Should be V2G_Message, supportedAppProtocolReq or supportedAppProtocolRes
-    print(list(dict_data.keys())[0])
-    root_element = list(dict_data.keys())[0]
-
-    logger.debug("Printing root element: %s", root_element)
-
-    # Get namespaces and prefixes from root element
-    prefixes = []
-    root_attributes_namespaces = []
-
-    for key in dict_data[root_element].keys():
-        if key.startswith("@xmlns:") or key.startswith("@xsi:"):
-            prefixes.append(key.split(":")[1])
-            root_attributes_namespaces.append(key)
-
-    # Delete root attributes namespaces
-    for attribute in root_attributes_namespaces:
-        dict_data[root_element].pop(attribute)
-
-    # Delete prefixes from all keys ->
-    # get all keys recursively
-    # def get_all_keys_recursive3(dictionary):
-    #    keys = set()
-    #
-    #    for key, value in dictionary.items():
-    #        keys.add(key)
-    #        if isinstance(value, dict):
-    #            keys.update(get_all_keys_recursive3(value))
-    #
-    #   return keys
-
-    # all_keys = get_all_keys_recursive3(dict_data)
-    # print(all_keys)
-
-    # NO NEED FOR ALL KEYS
-    def delete_unwanted_prefixes_from_keys_rec(dictionary, unwanted_prefixes):
-        # Create a copy of keys to avoid modification during iteration
-        keys = list(dictionary.keys())
-
-        for key in keys:
-            new_key = None  # Initialize new_key for potential renaming
-
-            # Check if the current key starts with any unwanted prefix
-            for prefix in unwanted_prefixes:
-                if key.startswith(prefix):
-                    # Remove the prefix and : (that's why + 1) from the key
-                    new_key = key[len(prefix) + 1 :]
-                    break  # Stop checking prefixes once a match is found
-
-            # If a new key is generated, rename the key in the dictionary
-            if new_key is not None:
-                dictionary[new_key] = dictionary.pop(key)
-
-            # Check if the value associated with the key is a nested dictionary
-            if isinstance(dictionary.get(new_key), dict):
-                delete_unwanted_prefixes_from_keys_rec(
-                    dictionary[new_key], unwanted_prefixes
-                )
-
-    delete_unwanted_prefixes_from_keys_rec(dict_data, prefixes)
-    print(dict_data)
-
-    # Attempt to create an instance of the class
-    # your_mode = YourMode(**your_dict)
-    #
-    # your_model = YourMode(**your_dict)
-    # your_model = YourMode.parse_obj(your_dict)  parse_obj is deprecated
-    # your_model = YourMode.model_validate(your_dict)
-
-    # Need to delete V2G_Message from dict_data, cause it's not a field of V2G_Message
-    # TODO: OR implement V2G_MessageBase with V2G_Message field ???
-    # and then create instance of V2G_MessageBase
-    root_element_no_ns = list(dict_data.keys())[0]
-    dict_data = dict_data[root_element_no_ns]
-    print(dict_data)
-
-    exit(1)
-    model = V2G_Message.model_validate(dict_data)
-
-    print(model)
-
-    return
-
-    def get_all_keys_recursive2(dictionary):
-        keys = set()
-
-        for key, value in dictionary.items():
-            keys.add(key)
-            if isinstance(value, dict):
-                keys.update(get_all_keys_recursive2(value))
-
-        return keys
-
-    all_keys = get_all_keys_recursive2(dict_data)
-    print(all_keys)
-
-    prefixes = get_ns_prefixes(list(all_keys))
-    print(prefixes)
-
-    # List of prefixes which should be delete from whole dictionary for every key
-    prefixes2 = []
-    # Keys to delete are attributes of root element, which are namespaces
-    keys_to_delete = []
-    for key, value in dict_data[root_element].items():
-        if key.startswith("@xmlns:") or key.startswith("@xsi:"):
-            # print(list(key.split(":"))[1])
-            print(key.split(":")[1])
-            prefixes2.append(list(key.split(":"))[1])
-            # add to list keys to delete
-            keys_to_delete.append(key)
-
-    print(keys_to_delete, prefixes2)
-
-    start = time.perf_counter()
-    # For next processing is easier to work with JSON as string not as dict
-    json_data = json.dumps(dict_data)
-
-    # Delete prefixes from all keys
-    # print(json_data)
-    for prefix in prefixes2:
-        json_data = json_data.replace(prefix + ":", "")
-    # print(json_data)
-    dictionary_asdas = json.loads(json_data)
-    end = time.perf_counter()
-    print(f"Time to delete prefixes from all keys using JSON: {end - start}")
-
-    # Delete attributes which are namespaces
-    for key in keys_to_delete:
-        dict_data[root_element].pop(key)
-
-    # for key in all_keys:
-    #    if any(key.startswith(prefix) for prefix in prefixes):
-    #        print(list(key.split(":"))[1])
-
-    print("ALL keys")
-    print(all_keys)
-    print("Keys after deleting attributes keys from root element")
-
-    all_keys = all_keys - set(keys_to_delete)
-    print(all_keys)
-
-    # Delete prefixes from keys
-    def delete_unwanted_keys_rec2(dictionary, unwanted_prefixes):
-        keys_to_remove = all_keys  # Create a copy of keys
-        new_key = None
-
-        for key in keys_to_remove:
-            for prefix in unwanted_prefixes:
-                if key.startswith(prefix):
-                    new_key = key.split(":")[
-                        1
-                    ]  # Remove the prefix can be also key[len(prefix) + 1 :]
-
-                    if dictionary.get(key):
-                        dictionary[new_key] = dictionary.pop(key)
-
-            if isinstance(dictionary.get(key), dict):
-                delete_unwanted_keys_rec2(dictionary[key], unwanted_prefixes)
-
-            if isinstance(dictionary.get(new_key), dict):
-                delete_unwanted_keys_rec2(
-                    dictionary[new_key], unwanted_prefixes
-                )
-
-    start = time.perf_counter()
-    delete_unwanted_keys_rec2(dict_data, prefixes2)
-    end = time.perf_counter()
-    print(f"Time to delete prefixes from all keys using dict: {end - start}")
-
-    print(dict_data)
-
-    return
-
-    prefixes = []
-    keys_to_delete = []
-    for key, value in dict_data[root_element].items():
-        if key.startswith("@xmlns:"):
-            print(list(key.split(":"))[1])
-            prefixes.append(list(key.split(":"))[1])
-            # add to list keys to delete
-            keys_to_delete.append(key)
-
-    # delete namespaces as attributes from root element
-    for key in keys_to_delete:
-        dict_data[root_element].pop(key)
-
-    print(100 * "-")
-    print(copy_dict_data)
-
-    prefixes = []
-    keys_to_delete = []
-    for key, value in copy_dict_data[root_element].items():
-        if key.startswith("@xmlns:"):
-            print(list(key.split(":"))[1])
-            prefixes.append(list(key.split(":"))[1])
-            # add to list keys to delete
-            keys_to_delete.append(key)
-
-    for key in keys_to_delete:
-        copy_dict_data[root_element].pop(key)
-
-    def delete_unwanted_keys_rec(dictionary, unwanted_keys):
-        for key, value in dictionary.items():
-            if key in unwanted_keys:
-                dictionary.pop(key)
-                dictionary[key.split(":")[1]] = value
-            if isinstance(value, dict):
-                delete_unwanted_keys_rec(value, unwanted_keys)
-
-    delete_unwanted_keys_rec(copy_dict_data, prefixes)
-    print(copy_dict_data)
-    print(100 * "-")
-
-    # DELETE THIS
-    # Get all keys from all levels of the dictionary dict_data
-    def get_all_keys_recursive(dictionary):
-        keys = set()
-
-        for key, value in dictionary.items():
-            keys.add(key)
-            if isinstance(value, dict):
-                keys.update(get_all_keys_recursive(value))
-
-        return keys
-
-    keys = get_all_keys_recursive(dict_data)
-    print(keys)
-
-    new_dict = {}
-    # TODO: Do it recursively, cause this do it only for 1 level, so only for key V2G_Message
-    for key, value in dict_data.items():
-        for prefix in prefixes:
-            if key.startswith(prefix + ":"):
-                new_key = key[len(prefix) + 1 :]
-                new_dict[new_key] = value
-
-    print(prefixes)
-    print(new_dict)
-
-    # TODO: Think about maybe remove using split and list slicing using : as separator
-    # Like this: key.split(":")[1] and update the key with new key
-    # TODO: for root element i can delte @ => attributes, but for some elements i can't
-    # because they use @ as an attribute like id...
-
-    logger.debug("Printing XML data converted to dictionary after removing")
-    logger.debug(dict_data)
-
-    # Think about work with JSON insted of dict
-    # Deleting namespaces from keys can be easier with JSON
-
-    return dict_data
+    # Should never happen
+    raise ValueError("Unknown root element")
 
 
 def class_instance2xml(obj: object) -> str:
@@ -511,22 +314,19 @@ def class_instance2xml(obj: object) -> str:
     # The root element of the V2G communication message is V2GMessage
     if isinstance(obj, V2G_Message):
         dict_data = obj.model_dump(by_alias=True, exclude_unset=True)
+
         # New root element
         root_element_name = "V2G_Message"
-
         # Create a new dictionary with the root element
         dict_data = {root_element_name: dict_data}
-
         root_element_name_with_ns = "v2gci_d" + ":" + root_element_name
-
-        # There should be swapping function to swap keys as ns:keys
-        # swap keys from V2GMessage to v2gci_d:V2G_Message
-        # json_data["v2gci_d:V2G_Message"] = json_data.pop("V2GMessage")
-        print(dict_data)
 
         # Add namespaces to keys
         dict_data = add_namespaces_to_keys(dict_data)
-        # TODO: Add namespaces to attributes using xmltodict
+        # TODO: Add namespaces to attributes using xmltodict - probably not possible
+        # TODO: Do that with lxml lib, cause i need some customization
+        # But for lxml lib the imput needs to be string, not dict
+        # not only adding namespaces to keys, but also based on its parent
 
         # xmltodict.unparse() can handle @ as prefix for attributes
         # So this is filling attributes for V2GMessage
@@ -557,7 +357,6 @@ def class_instance2xml(obj: object) -> str:
 
         logger.debug(xml_str)
 
-        print(xml_str)
         return xml_str
 
     # The root element of the V2G communication message is supportedAppProtocolRes
@@ -682,6 +481,38 @@ def add_namespaces(data, namespace_map, parent_namespace=None):
         return data
 
 
+def xml2exi(xml: str) -> str:
+    """Converts XML to EXI.
+
+    Args:
+        xml (str): XML string to convert.
+
+    Returns:
+        str: EXI string.
+    """
+    try:
+        response = requests.post(
+            "http://localhost:9000",
+            headers={"Format": "XML"},
+            data=xml,
+            timeout=10,
+        )
+        if response.status_code == 200:
+            logger.debug("Response from V2GDecoder:")
+            logger.debug(response.text)
+        else:
+            logger.warning("Error: %s", response.status_code)
+            logger.warning("Error: %s", response.text)
+    except requests.exceptions.Timeout:
+        logger.error("Timeout! Is V2GDecoder running?")
+        exit(1)
+    except requests.exceptions.ConnectionError:
+        logger.error("Connection refused! Is V2GDecoder running?")
+        exit(1)
+
+    return response.text
+
+
 # NOT USED
 def dict_to_xml(data, parent=None):
     if isinstance(data, dict):
@@ -707,3 +538,33 @@ def get_ns_prefixes(names: list):
         if name.startswith("@xmlns:"):
             prefixes.append(name.split(":")[1])
     return prefixes
+
+
+# TODO: Work on this later, for now my add prefix function is working
+if False:
+    from lxml import etree
+
+    # Parse the XML data
+    root = etree.fromstring(xml_data)
+    root = ET.fromstring(xml_data)
+
+    def add_prefixes_to_elements(element, current_namespace=None):
+        # Get the element's tag (name)
+        tag = element.tag
+
+        # Determine the namespace prefix for the element's tag
+        for namespace, elements in namespace_map.items():
+            if tag in elements:
+                current_namespace = namespace
+                break
+
+        # Add the namespace prefix to the element's tag
+        if current_namespace is not None:
+            element.tag = f"{current_namespace}:{tag}"
+
+        # Recursively process child elements
+        for child in element:
+            add_prefixes_to_elements(child, current_namespace)
+
+    # Start adding prefixes from the root element
+    add_prefixes_to_elements(root)

@@ -38,7 +38,9 @@ class AppProtocolType(BaseModel):
         version_major: The major version number of protocol indicated in the ProtocolNamespace.
         version_minor: The minor version number of protocol indicated in the ProtocolNamespace.
         schema_id: This element is used by EVCC to indicate the SchemaID assigned by the EVCC to the protocol.
-        priority: This element is used by EVCC to indicate the priority of the protocol. SECC can select the protocol based on the priority.
+        priority: This element is used by EVCC to indicate the priority of the protocol.\
+            SECC shall select the protocol based on the priority.\
+            The highest priority is indicated by the lowest number(1-20).
     """
 
     model_config = ConfigDict(use_enum_values=True)
@@ -88,7 +90,12 @@ class supportedAppProtocolRes(BaseModel):
     Response message for supportedAppProtocolRes.
 
     Attributes:
-        response_code: The response code to indicate if at least one of the protocols provides by EVCC is supported by the SECC.
+        response_code: The response code to indicate if at least one\
+            of the protocols provides by EVCC is supported by the SECC.
+        schema_id: SchemaID of the protocol/schema which is agreed\
+            as application protocol for the following communication session.\
+            SECC shall select from its own list of supported protocols\
+            the protocol with highest Priority indicated by the EVCC.
 
     """
 

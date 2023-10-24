@@ -107,6 +107,7 @@ class SessionSetupRes(BodyBaseType):
     # evseIDType, xs:string, minLength 7, maxLength 37
     evse_id: str = Field(..., alias="EVSEID")
     # EVSETimeStamp, xs:long, minOccurs 0 => not required
+    # Timestamp of the current SECC time. Format is “Unix Time Stamp”.
     evse_timestamp: int = Field(default=None, alias="EVSETimeStamp")
 
 
@@ -193,6 +194,8 @@ class PaymentDetailsRes(BodyBaseType):
     # responseCodeType, enum values, minOccurs 1 => required
     response_code: responseCodeType = Field(..., alias="ResponseCode")
     # genChallengeType, xs:base64Binary, length 16, minOccurs 1 => required
+    # Challenge sent by SECC to EVCC, generated random number
+    # [V2G2-825] The GenChallenge field shall be exactly 128 bits long
     gen_challenge: str = Field(..., alias="GenChallenge")
     # xs:long, minOccurs 1 => required
     evse_timestamp: int = Field(..., alias="EVSETimeStamp")
@@ -408,6 +411,10 @@ class CertificateUpdateRes(BodyBaseType):
     e_maid: EMAIDType = Field(..., alias="eMAID")
     # RetryCounter, minOccurs 0 => not required
     # xs:short
+    # The following entries are possible:
+    # x > 0: after “x” days
+    # 0: immediately (at next charging)
+    # -1: never
     retry_counter: int = Field(default=None, alias="RetryCounter")
 
 

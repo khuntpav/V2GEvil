@@ -91,7 +91,11 @@ class unitSymbolType(str, Enum):
 
 
 class PhysicalValueType(BaseModel):
-    """ComplexType PhysicalValueType."""
+    """ComplexType PhysicalValueType.
+    
+    Value range and unit definition for message elements using PhysicalValueType\
+    Table 68, page 110
+    """
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -255,7 +259,7 @@ class ServiceParameterListType(BaseModel):
 
 
 class SubCertificatesType(BaseModel):
-    # certificateType is xs:base64Binary, maxLength 800, here is in bytes
+    # certificateType is xs:base64Binary, maxLength 800
     # base64 encoded certificate, certificate in bytes
     # maxOccurs = 4 => 1-4 items in list
     certificate: List[str] = Field(..., alias="Certificate")
@@ -266,8 +270,8 @@ class CertificateChainType(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    # attribute Id, xs:ID, in XSD is defined as attribute => need to add
-    # populating by name in ConfigDict and serialization and validation alias
+    # attribute Id, xs:ID, in XSD is defined as attribute (need @ in json) =>
+    # need to add populating by name in ConfigDict and serialization and validation alias
     # instead of alias, if only alias is used, it's working but pylance is complaining
     id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
     # certificateType, minOccurs = 1 => required
@@ -275,7 +279,9 @@ class CertificateChainType(BaseModel):
     # base64 encoded certificate, certificate in bytes
     certificate: str = Field(..., alias="Certificate")
     # SubCertificatesType, minOccurs = 0 => not required
-    sub_certificates: SubCertificatesType = Field(..., alias="SubCertificates")
+    sub_certificates: SubCertificatesType = Field(
+        default=None, alias="SubCertificates"
+    )
 
 
 class EVSEProcessingType(str, Enum):
@@ -313,7 +319,8 @@ class EVSEStatusType(ABC, BaseModel):
 class AC_EVSEStatusType(EVSEStatusType):
     """complexType AC_EVSEStatusType"""
 
-    # RCD
+    # RCD, Residual Current Device
+    # True => RCD detected and error, False => RCD has not detected an error
     # xs:boolean
     rcd: bool = Field(..., alias="RCD")
 
@@ -348,7 +355,7 @@ class DC_EVSEStatusType(EVSEStatusType):
 
     # EVSEIsolationStatus, minOccurs = 0 => not required
     evse_isolation_status: isolationLevelType = Field(
-        None, alias="EVSEIsolationStatus"
+        default=None, alias="EVSEIsolationStatus"
     )
     # EVSEStatusCode, minOccurs = 1 => required
     evse_status_code: DC_EVSEStatusCodeType = Field(
