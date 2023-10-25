@@ -2,6 +2,7 @@
 
 Calling logic from car module.
 """
+from typing import Optional
 import rich_click as click
 from ..station import station
 
@@ -29,28 +30,61 @@ def station_tools():
 @click.option(
     "--accept-security",
     "accept_security",
+    is_flag=True,  # need to add is_flag, because i have no /--no-accept-security
     default=False,
     show_default=True,
     help="Station should follow security provided by EVCC",
 )
-# TODO: Add option config file, in which will be load the file with dictionary
-# Testing modules will also call this method and based on their purpose
-# they will load different dictionaries
-def start_station(interface: str, async_flag: bool, accept_security: bool):
+@click.option(
+    "--charging-mode",
+    "charging_mode",
+    default="AC",
+    show_default=True,
+    help="Charging mode of the EVSE. Possible values: AC, DC",
+)
+@click.option(
+    "--custom-dict",
+    "custom_dict_filename",
+    default=None,
+    show_default=True,
+    help="Path to file with custom dictionary for mapping V2GTP requests to responses",
+)
+def start_station(
+    interface: str,
+    async_flag: bool,
+    accept_security: bool,
+    charging_mode: str,
+    custom_dict_filename: str,
+):
     """Start station. By default is async (defined in click.option)"""
-    # TODO: Here will be call of the logic to load/generate the dictionary,
-    #       which contains the name of the request message type and the whole
-    #       corresponding response message as key-value pair.
-    # TODO: Add config option, in which will be load the file with dictionary
-    # So first the user should generate dict in generate he specify what he wants to test
-    # The station can have some defaults like test TLS enabled option
-    # or some default test for ex for sessionID,
-    # TODO: Maybe it will be better to have a another modules which will call the
-    # station start_async with different dictionaries based on the testing module
-    # or different setting for the TLS test and so on
+
+    # Need to convert string to enum for charging_mode
+    try:
+        # charging_mode = EVEnumMode(enum_mode) => need to catch ValueError
+        charging_mode = station.EVSEChargingMode[
+            charging_mode.upper()
+        ]  # => need to catch KeyError
+    except KeyError:
+        print(f"Invalid charging mode: {charging_mode}")
+        return
+
+    # Load custom config from file if provided
+    # Responsibility of the user to provide correct file
+    # No additional validation for the content of the file is done
+    custom_dict = None
+    if custom_dict_filename:
+        custom_dict = station.load_custom_dict_from_file(
+            filename=custom_dict_filename
+        )
+
+    # Run station in async mode or manual mode
     if async_flag:
         station.start_async(
-            interface=interface, accept_security=accept_security
+            interface=interface,
+            accept_security=accept_security,
+            charging_mode=charging_mode,
+            custom_dict=custom_dict,
         )
     else:
+        # Deprecated
         station.start(interface=interface)

@@ -10,7 +10,8 @@ import struct
 import asyncio
 import random
 from typing import Optional
-from enum import Enum
+from pathlib import Path
+import json
 
 from ..v2gtp.v2gtp import V2GTPMessage
 from ..v2gtp.v2gtp_enums import (
@@ -19,30 +20,11 @@ from ..v2gtp.v2gtp_enums import (
     V2GTPPorts,
     V2GTPAddress,
 )
-from ..modules.enumerator import EVEnumerator, EVEnumMode
+from .station_enums import EVSEDetails, EVSEChargingMode
+from ..enumerator.enumerator import EVEnumerator, EVEnumMode
 from ..messages.generator import EVSEMessageGenerator
 
 logger = logging.getLogger(__name__)
-
-
-class EVSEChargingMode(str, Enum):
-    """Enum for EVSE charging type."""
-
-    AC = "AC"
-    DC = "DC"
-
-
-class EVSEDetails(str, Enum):
-    """Enum for EVSE details."""
-
-    # If an SECC cannot provide such ID data,
-    # the value of the EVSEID is set to zero ("ZZ00000").
-    # Value taken from ISO 15118-2, page 280
-    EVSE_ID = "FRA23E45B78C"
-    # Default SchemaID, value from ISO 15118-2, page 59
-    SCHEMA_ID = "10"
-    PROTOCOL_NAMESPACE = "urn:iso:15118:2:2013:MsgDef"
-    INTERFACE = "eth_station"
 
 
 class ServerManager:
@@ -81,8 +63,6 @@ class ServerManager:
         tls_flag: bool = False,
         accept_security: bool = False,
         charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
-        # Maybe remove enum_flag and leave only ev_enumerator and default to None
-        enum_flag: bool = False,
         ev_enumerator: Optional[EVEnumerator] = None,
         # TODO: Add message dict, which will be used to configure the station
         # which content in the V2G responses should be
@@ -121,14 +101,8 @@ class ServerManager:
         self.accept_security = accept_security
         self.charging_mode = charging_mode
         self.messages_mapping_dict = messages_mapping_dict
-        # If True: Station will enumerate all possible information about the EV
-        self.enum_flag = enum_flag
-
-        if self.enum_flag:
-            # Everything what can be enumerated, will be saved in this enumerator
-            # then it can be extracted and displayed to the user, after the
-            # station is stopped
-            self.ev_enumerator = ev_enumerator
+        # If None => no enumeration
+        self.ev_enumerator = ev_enumerator
 
         # Cannot be defined by user
         self.udp_stop_flag = asyncio.Event()
@@ -138,6 +112,7 @@ class ServerManager:
     def load_messages_dict(self) -> None:
         """Load messages dict for request-response pairs/mapping."""
         if self.messages_mapping_dict is None:
+            logger.info("Loading default messages dict")
             msg_generator = EVSEMessageGenerator(
                 charging_mode=self.charging_mode
             )
@@ -153,6 +128,9 @@ class ServerManager:
         self.load_messages_dict()
         logger.debug("Messages dict loaded:")
         logger.debug(self.messages_mapping_dict)
+
+        # TODO: Print whole configuration of the station, all the parameters
+        # self.print_config()
 
         # After Data-Link is established
         udp_task = asyncio.create_task(self.sdp_server())
@@ -233,9 +211,18 @@ class ServerManager:
                 sdp_request = V2GTPMessage(data)
                 requested_security, _ = sdp_request.parse_v2gtp_sdp_request()
 
-                # TODO:
-                # if self.enum_flag:
-                #    if EVEnumMode.TLS_CHECK_ONLY in self.ev_enumerator.enum_modes:
+                # Add SDP request to the EVEnumerator if TLS_CHECK mode is enabled
+                if self.ev_enumerator is not None:
+                    if EVEnumMode.TLS_CHECK in self.ev_enumerator.enum_modes:
+                        self.ev_enumerator.sdp_request = sdp_request
+                # TODO: Try to end all the loops and stop the SDP server => stop station
+                # if it's possible
+                # if self.ev_enumerator is not None:
+                #     if (
+                #         EVEnumMode.TLS_CHECK_ONLY
+                #         in self.ev_enumerator.enum_modes
+                #     ):
+                #         logger.debug("Only TLS check performed, then exitting")
 
                 # True => the station use same security as the EVCC requested
                 if self.accept_security:
@@ -365,6 +352,7 @@ class ServerManager:
                         messages_dict=self.messages_mapping_dict,
                         enum_flag=True,
                     )
+                    assert isinstance(req_name, str)  # Just for IDE
                     if req_name in self.ev_enumerator.msgs_for_enum:
                         self.ev_enumerator.v2g_requests_dict[
                             req_name
@@ -402,12 +390,29 @@ class ServerManager:
             conn.close()  # Close the connection when done
 
 
+def load_custom_dict_from_file(filename: str) -> dict:
+    """Load custom dictionary (for V2GTP request-response mapping) from file."""
+    if Path(filename).is_file():
+        logger.info("Loading custom dictionary from file: %s", filename)
+        # Load file and return dict loaded from file
+        with open(filename, "r", encoding="utf-8") as dictionary_file:
+            custom_dict = json.load(dictionary_file)
+            logger.debug(type(custom_dict))
+            logger.debug(custom_dict)
+
+        return custom_dict
+
+    raise FileNotFoundError(
+        f"File {filename} does not exist. Cannot load custom dictionary."
+    )
+
+
 def start_async(
     interface: str = EVSEDetails.INTERFACE.value,
     accept_security: bool = False,
     charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
-    enum_flag: bool = False,
     ev_enumerator: Optional[EVEnumerator] = None,
+    custom_dict: Optional[dict] = None,
 ):
     """Start station.
 
@@ -418,8 +423,8 @@ def start_async(
         interface=interface,
         accept_security=accept_security,
         charging_mode=charging_mode,
-        enum_flag=enum_flag,
         ev_enumerator=ev_enumerator,
+        messages_mapping_dict=custom_dict,
     )
     asyncio.run(manager.start())
 

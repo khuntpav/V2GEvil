@@ -9,6 +9,7 @@ import logging
 import socket
 import requests
 import random
+from typing import Optional, Union
 
 from scapy.plist import PacketList
 from scapy.packet import Packet
@@ -190,9 +191,23 @@ class V2GTPMessage:
 
         return server_address, server_port, security_byte, transport_proto_byte
 
+    # TODO: Implement also malicious brother of this method or just made some changes in this method
+    # model_construct instead of model_validate, model_dump(warnings=False), etc
     # TODO: Implement this method
-    def create_v2gtp_exi_msg_response(self) -> bytes:
-        """Create V2GTP EXI message response."""
+    # TODO: Add enum_flag and based on that flag will be return obj or obj, obj_name
+    def create_v2gtp_exi_msg_response(
+        self,
+        messages_dict: Optional[dict] = None,
+        enum_flag: bool = False,
+        malicious_flag: bool = False,
+    ) -> Union[tuple[bytes, str], bytes]:
+        """Create V2GTP EXI message response.
+
+        Based on the request, create response.
+
+        Based on the enum_flag, if true return tuple of bytes of response\
+        and name of request class. If false, return only bytes of response.
+        """
 
         if self.is_v2gtp_exi_msg_data() is False:
             logger.warning("Payload type is not EXI message!")
@@ -201,11 +216,15 @@ class V2GTPMessage:
         payload_type = V2GTPMessageType.V2GTP_EXI_MSG
         response_obj = None
 
-        # TODO: Check what type of request was received => need to EXI decode
-        obj, obj_name = self.parse_v2gtp_exi_msg()
+        # Check what type of request was received => need to EXI decode
+        obj, req_obj_name = self.parse_v2gtp_exi_msg()
 
-        # For now just simple response based on the Responses list
-        # TODO: Load the list of responses at the start of station
+        # Based on this mapping request-response, the responses are created
+        responses = messages_dict
+        if responses is None:
+            logger.warning("Responses dictionary is None!")
+            raise ValueError("Responses dictionary is None!")
+
         if isinstance(obj, V2G_Message):
             if (
                 isinstance(obj.body, SessionSetupReq)
@@ -241,19 +260,17 @@ class V2GTPMessage:
             body_type_res = str(attribute_instance)
             # print(body_type_res) is equal to print(attribute_instance)
 
-            # Dictionary for mapping request to response
-            # TODO: Create dictionary at the start of station
-            # TODO: Add all responses to dictionary coresponding to request
-            # TODO: Think where to keep loading dictionary from file
-            responses = {
-                "SessionSetupReq": {"SessionSetupRes": {"ResponseCode": "OK"}}
-            }
-
             # Create instance of Body with proper response class
             # response dictionary is based on the request class name
             # for example: 'SessionSetupReq' =>
             #   {'SessionSetupRes': {'ResponseCode': 'OK', 'EVSEID': 'EVSE1'}}
-            body_res = Body(**responses[body_type_res])
+            # TODO: Think what from this two lines is better
+            # body_res = Body(**responses[body_type_res]) -> this showing error in VSCode but it's working
+            # the line below is without error in VSCode, also working in runtime
+            body_res = Body.model_validate(responses[body_type_res])
+
+            # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
+            # also thi param is need to be check when model_dump, => model_dump(warnings=False)
 
             response_obj = V2G_Message(Header=header_res, Body=body_res)
 
@@ -267,6 +284,8 @@ class V2GTPMessage:
                         SchemaID=app_proto.schema_id,
                     )
 
+        # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
+        # also thi param is need to be check when model_dump, => model_dump(warnings=False)
         # Use messages.class_instance2xml() method => get XML from class instance
         response_xml = messages.class_instance2xml(response_obj)
 
@@ -285,7 +304,8 @@ class V2GTPMessage:
         # Then use messages.class_instance2xml() method
         # Then use messages.xml2exi() method or encode() method in this file
         # have bytes from EXI, then use create_message() method and pass EXI bytes as payload
-
+        if enum_flag:
+            return created_message, req_obj_name
         return created_message
 
     def create_v2gtp_sdp_response(
@@ -348,11 +368,19 @@ class V2GTPMessage:
         port: int = 15119,
         protocol: bytes = V2GTPProtocols.TCP,
         tls_flag: bool = False,
-    ) -> bytes:
-        """Create response message."""
+        messages_dict: Optional[dict] = None,
+        enum_flag: bool = False,
+    ) -> Union[tuple[bytes, str], bytes]:
+        """Create response message.
+        
+        Based on the enum_flag, if true return tuple of bytes of response\
+        and name of request class. If false, return only bytes of response.
+        """
         # Check if payload type is V2GTP EXI message or SDP message
         if self.is_v2gtp_exi_msg_data():
-            return self.create_v2gtp_exi_msg_response()
+            return self.create_v2gtp_exi_msg_response(
+                messages_dict=messages_dict, enum_flag=enum_flag
+            )
 
         if self.is_v2gtp_sdp_request_data():
             return self.create_v2gtp_sdp_response(

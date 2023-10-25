@@ -20,3 +20,10 @@ class EVSEDetails(str, Enum):
     SCHEMA_ID = "10"
     PROTOCOL_NAMESPACE = "urn:iso:15118:2:2013:MsgDef"
     INTERFACE = "eth_station"
+
+
+class EVSEDefaultDictPaths(str, Enum):
+    """Enum for default station dictionary filepath."""
+
+    AC_MODE_PATH = "default_dictionaries/default_dict_AC.json"
+    DC_MODE_PATH = "default_dictionaries/default_dict_DC.json"

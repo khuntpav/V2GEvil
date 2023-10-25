@@ -16,6 +16,8 @@ from .sender_tools import sender_tools
 from .station_tools import station_tools
 from .car_tools import car_tools
 from .console import console
+from .message_tools import message_tools
+from .modules_tools import modules_tools
 
 logger = logging.getLogger(__name__)
 
@@ -57,3 +59,5 @@ main.add_command(v2gtp_tools)
 main.add_command(sender_tools)
 main.add_command(station_tools)
 main.add_command(car_tools)
+main.add_command(message_tools)
+main.add_command(modules_tools)

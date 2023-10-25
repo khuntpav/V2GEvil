@@ -11,21 +11,17 @@ import time  # for timestamp
 import logging
 from pathlib import Path
 from typing import Union, Optional
-from pydantic import BaseModel
-from enum import Enum
 import json
+
+from ..station.station_enums import EVSEDefaultDictPaths
 
 # V2G messages schemas
 from .AppProtocol import (
     supportedAppProtocolReq,
     supportedAppProtocolRes,
-    AppProtocolType,
     responseCodeType as appProtocolResponseCodeType,
 )
-from .MsgDef import V2G_Message
-from .MsgHeader import Header
 from .MsgBody import (
-    Body,
     BodyBaseType,
     SessionSetupReq,
     SessionSetupRes,
@@ -87,23 +83,23 @@ from .MsgDataTypes import (
     unitSymbolType,
     MeterInfoType,
 )
-from ..station.station import EVSEChargingMode, EVSEDetails
+from ..station.station_enums import (
+    EVSEChargingMode,
+    EVSEDetails,
+    EVSEDefaultDictPaths,
+)
+
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_STATION_DICT_PATH = "default_dict.json"
 
 
-class DefaultStationDict(str, Enum):
-    AC_MODE_PATH = "default_dict_AC.json"
-    DC_MODE_PATH = "default_dict_DC.json"
-
-
-msg_dict = {
-    "supportedAppProtocolReq": "supportedAppProtocolRes",
-    "SessionSetupReq": "SessionSetupRes",
-    "ServiceDiscoveryReq": "ServiceDiscoveryRes",
-}
-
-logger = logging.getLogger(__name__)
+# msg_dict = {
+#     "supportedAppProtocolReq": "supportedAppProtocolRes",
+#     "SessionSetupReq": "SessionSetupRes",
+#     "ServiceDiscoveryReq": "ServiceDiscoveryRes",
+# }
 
 
 class EVSEMessageGenerator:
@@ -116,11 +112,15 @@ class EVSEMessageGenerator:
     """
 
     def __init__(
-        self, charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC
+        self,
+        charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
+        override_flag: bool = False,
     ):
         self.charging_mode = charging_mode
         # generate_default_dict differ between AC or DC charging mode
-        self.default_dict = self.generate_default_dict()
+        self.default_dict = self.generate_default_dict(
+            override_flag=override_flag
+        )
 
     def add_model_to_dict(
         self,
@@ -144,15 +144,24 @@ class EVSEMessageGenerator:
 
         return dictionary
 
-    def load_default_dict(self, file_name: DefaultStationDict) -> dict:
+    def load_default_dict(self, file_name: EVSEDefaultDictPaths) -> dict:
         """Load default dictionary from file."""
-        if Path(file_name).is_file():
+
+        msg_abs_path = Path(__file__).parent.absolute()
+        file_name_path = msg_abs_path.joinpath(file_name.value)
+        logger.debug(
+            "Trying to load default dictionary from file: %s", file_name_path
+        )
+
+        if Path(file_name_path).is_file():
             logger.info(
                 "Default dictionary already exists."
-                "If you want to overide it, set overide_flag to True."
+                "If you want to override it, set override_flag to True."
             )
             # Load file and return dict loaded from file
-            with open(file_name, "r", encoding="utf-8") as dictionary_file:
+            with open(
+                file_name_path, "r", encoding="utf-8"
+            ) as dictionary_file:
                 dictionary = json.load(dictionary_file)
                 logger.debug(type(dictionary))
                 logger.debug(dictionary)
@@ -162,27 +171,44 @@ class EVSEMessageGenerator:
         return {}
 
     def save_default_dict(
-        self, file_name: DefaultStationDict, dictionary: dict
+        self, file_name: EVSEDefaultDictPaths, dictionary: dict
     ):
         """Save default dictionary to file."""
-        with open(file_name, "w", encoding="utf-8") as dictionary_file:
+        # Get absolute path of the file -> to save where the project is
+        # located in the right directory
+        msg_abs_path = Path(__file__).parent.absolute()
+        file_name_path = msg_abs_path.joinpath(file_name.value)
+        logger.debug("Saving default dictionary to file: %s", file_name_path)
+
+        with open(file_name_path, "w", encoding="utf-8") as dictionary_file:
             json.dump(dictionary, dictionary_file)
 
     # Generators for default messages START
-    def generate_default_dict_AC(self, overide_flag: bool = False) -> dict:
-        """Generate default dictionary for AC charging mode."""
+    def generate_default_dict_AC(self, override_flag: bool = False) -> dict:
+        """Generate default dictionary for AC charging mode.
+        
+        Generated dictionory is also saved to file\
+            if not exists or if override_flag is True.
+                    
+        Args:
+            override_flag (bool, optional): If True, existing file will be overriden.\
+                Defaults to False.
+
+        Returns:
+            Generated dictionary for AC charging mode.
+        """
 
         default_dict_ac = {}
 
-        if not overide_flag:
+        if not override_flag:
             default_dict_ac = self.load_default_dict(
-                DefaultStationDict.AC_MODE_PATH
+                EVSEDefaultDictPaths.AC_MODE_PATH
             )
             # Dict is not empty
             if default_dict_ac:
                 return default_dict_ac
 
-        # Overide_flag is True or default dictionary is empty
+        # Override_flag is True or default dictionary is empty
 
         generator_functions = [
             # Common AC/DC messages START
@@ -218,21 +244,32 @@ class EVSEMessageGenerator:
 
         # Save dictionary to file
         self.save_default_dict(
-            DefaultStationDict.AC_MODE_PATH, default_dict_ac
+            EVSEDefaultDictPaths.AC_MODE_PATH, default_dict_ac
         )
         logger.debug(
-            f"Default dictionary for AC mode is generated: {default_dict_ac}"
+            "Default dictionary for AC mode is generated: %s", default_dict_ac
         )
         return default_dict_ac
 
     # TODO: Implement generate_default_dict_DC
-    def generate_default_dict_DC(self, overide_flag: bool = False) -> dict:
-        """Generate default dictionary for DC charging mode."""
+    def generate_default_dict_DC(self, override_flag: bool = False) -> dict:
+        """Generate default dictionary for DC charging mode.
+
+        Generated dictionory is also saved to file\
+            if not exists or if override_flag is True.
+        
+        Args:
+            override_flag (bool, optional): If True, existing file will be overriden.\
+                Defaults to False.
+
+        Returns:
+            Generated dictionary for DC charging mode.
+        """
         default_dict_dc = {}
 
-        if not overide_flag:
+        if not override_flag:
             default_dict_dc = self.load_default_dict(
-                DefaultStationDict.DC_MODE_PATH
+                EVSEDefaultDictPaths.DC_MODE_PATH
             )
             # Dict is not empty
             if default_dict_dc:
@@ -270,26 +307,36 @@ class EVSEMessageGenerator:
 
         # Save dictionary to file
         self.save_default_dict(
-            DefaultStationDict.DC_MODE_PATH, default_dict_dc
+            EVSEDefaultDictPaths.DC_MODE_PATH, default_dict_dc
         )
         logger.debug(
-            f"Default dictionary for DC mode is generated: {default_dict_dc}"
+            "Default dictionary for DC mode is generated: %s", default_dict_dc
         )
         return default_dict_dc
 
-    def generate_default_dict(self, overide_flag: bool = False) -> dict:
-        """Generate default dictionary for all messages."""
+    def generate_default_dict(self, override_flag: bool = False) -> dict:
+        """Generate default dictionary for all messages.
+        
+        Save generated default dictionary into the file\
+            if not exists or if override_flag is True
+
+        Args:
+            override_flag (bool, optional): If True, existing file will be overriden.\
+                Defaults to False.
+
+        Returns:
+            Generated dictionary for AC or DC charging mode, based on the\
+                charging mode of the class.
+        """
 
         if self.charging_mode == EVSEChargingMode.AC:
-            return self.generate_default_dict_AC(overide_flag)
+            return self.generate_default_dict_AC(override_flag)
         if self.charging_mode == EVSEChargingMode.DC:
-            return self.generate_default_dict_DC(overide_flag)
+            return self.generate_default_dict_DC(override_flag)
 
         # Charging mode is not supported
-        logger.error(
-            f"Charging mode {self.charging_mode} is not supported."
-            f"Default dictionary can not be generated."
-        )
+        logger.error("Charging mode %s is not supported.", self.charging_mode)
+        logger.error("Default dictionary can not be generated.")
         raise ValueError(
             f"Charging mode {self.charging_mode} is not supported."
         )
@@ -333,22 +380,13 @@ class EVSEMessageGenerator:
         )
         return obj
 
-    def gen_default_ServiceDiscoveryRes(
-        self, charging_mode: Optional[EVSEChargingMode] = None
-    ) -> ServiceDiscoveryRes:
+    def gen_default_ServiceDiscoveryRes(self) -> ServiceDiscoveryRes:
         """Generate default ServiceDiscoveryRes message.
 
         This method will generate the default response message for the
-        ServiceDiscoveryReq message. Used parameters and values are based on
-        charging mode value.
-        This message can be generated for AC or DC charging mode.
+        ServiceDiscoveryReq message.
 
-        Args:
-            charging_mode (EVSEChargingMode, optional): Charging mode indicator.\
-                This will override the charging mode value of the class.\
-                Depending on the charging mode, parameters and values\
-                may differ in the generated message.\
-                Defaults to EVSEChargingMode.AC.\
+        This message is generated the same way for both charging modes.
         
         Notes: For now this message is generated for AC and DC in the same way.\
             All supported charging services as defined by SupportedEnergyTransferMode.
@@ -683,6 +721,9 @@ class EVSEMessageGenerator:
             )
             return obj
 
+        # Should not happen
+        raise ValueError("Charging mode is not supported.")
+
     def gen_default_SessionStopRes(self) -> SessionStopRes:
         """Generate default SessionStopRes message.
 
@@ -711,8 +752,10 @@ class EVSEMessageGenerator:
 
         # If responseCodeType.FAILED_CERT_EXPIRED is used,
         # then EVCC ignore all other fields except RetryCounter
+        # IMPORTANT if model_construct is used, use_enum_values is not working
         obj = CertificateUpdateRes.model_construct(
-            ResponseCode=responseCodeType.FAILED_CERT_EXPIRED, RetryCounter=0
+            ResponseCode=responseCodeType.FAILED_CERT_EXPIRED.value,
+            RetryCounter=0,
         )
         # TODO: Implement probably in module for testing certificates
         # obj = CertificateUpdateRes(
@@ -738,8 +781,9 @@ class EVSEMessageGenerator:
         does not depend on the charging mode.
         """
         # TODO: Implement probably in module for testing certificates
+        # IMPORTANT if model_construct is used, use_enum_values is not working
         obj = CertificateInstallationRes.model_construct(
-            ResponseCode=responseCodeType.FAILED_CERT_EXPIRED
+            ResponseCode=responseCodeType.FAILED_CERT_EXPIRED.value
         )
         # obj = CertificateInstallationRes(ResponseCode=responseCodeType.OK,
         #                                 SAProvisioningCertificateChain="",
@@ -902,7 +946,7 @@ class EVSEMessageGenerator:
         # msg_name is not in the default dict, so we can not generate response
         if not msg_name in self.default_dict:
             logger.error(
-                f"Message {msg_name} is not in the default dictionary."
+                "Message %s is not in the default dictionary.", msg_name
             )
             return {}
 
