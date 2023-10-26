@@ -7,6 +7,8 @@ It will call other modules and their commands.
 #       load modules for automatic exploitation/evaluation
 
 import logging
+import random
+from art import text2art
 import rich.traceback
 import rich_click as click
 from rich.logging import RichHandler
@@ -20,6 +22,21 @@ from .message_tools import message_tools
 from .modules_tools import modules_tools
 
 logger = logging.getLogger(__name__)
+fonts = [
+    "epic",
+    "doh",
+    "diamond",
+    "coinstak",
+    "larry3d",
+    "3-d",
+    "3d_diagonal",
+    "poison",
+    "impossible",
+    "colossal",
+    "varsity",
+    "arrows",
+    "doom",
+]
 
 
 @click.group()
@@ -48,12 +65,13 @@ def main(debug: bool):
     logger.debug("Main entry point for the CLI")
 
 
-@main.command(name="banner")
-def banner():
-    """Prints a basic banner from __main__.py"""
-    logger.debug("Hello, from banner!")
-
-
+# Print banner
+console.print(
+    text2art("V2GEvil", font=random.choice(fonts)),
+    style="red bold",
+    highlight=False,  # False => Delete highlights from some characters
+    # For some fonts looks better with False
+)
 main.add_command(sniffer_tools)
 main.add_command(v2gtp_tools)
 main.add_command(sender_tools)
