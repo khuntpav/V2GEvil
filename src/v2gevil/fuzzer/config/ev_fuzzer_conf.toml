@@ -1,0 +1,298 @@
+# Configuration for fuzzing messages
+# If the name of param is not in the list, it will be ignored (not fuzzed)
+# If the name of param is in the list, it will be fuzzed
+# User can decide if the param will be fuzzed with random value, out of range, invalid value or invalid type
+
+# TODO: Some params are list, so maybe add another key which will indicate how many elements should be in 
+
+# supportedAppProtocolRes START
+[supportedAppProtocolRes]
+ResponseCode = "random"
+SchemaID = "random"
+# supportedAppProtocolRes END
+
+# SessionSetupRes START
+[SessionSetupRes]
+ResponseCode = "random"
+EVSEID = "random"
+EVSETimeStamp = "random"
+# SessionSetupRes END
+
+# ServiceDiscoveryRes START
+[ServiceDiscoveryRes]
+ResponseCode = "random"
+
+[ServiceDiscoveryRes.PaymentOptionList]
+PaymentOption = "random"
+
+[ServiceDiscoveryRes.ChargeService]
+ServiceID = "random"
+ServiceName = "random"
+ServiceCategory = "random"
+FreeService = "random"
+
+[ServiceDiscoveryRes.ChargeService.SupportedEnergyTransferMode]
+EnergyTransferMode = "random"
+
+[ServiceDiscoveryRes.ServiceList.Service]
+ServiceID = "random"
+ServiceName = "random"
+ServiceCategory = "random"
+FreeService = "random"
+# ServiceDiscoveryRes END
+
+# ServiceDetailRes START
+[ServiceDetailRes]
+ResponseCode = "random"
+ServiceID = "random"
+
+[ServiceDetailRes.ServiceParameterList.ParameterSet]
+ParameterSetID = "random"
+Parameter = "random"
+# ServiceDetailRes END
+
+# PaymentServiceSelectionRes START
+[PaymentServiceSelectionRes]
+ResponseCode = "random"
+# PaymentServiceSelectionRes END
+
+# PaymentDetailsRes START
+[PaymentDetailsRes]
+ResponseCode = "random"
+GenChallenge = "random"
+EVSETimeStamp = "random"
+# PaymentDetailsRes END
+
+# AuthorizationRes START
+[AuthorizationRes]
+ResponseCode = "random"
+EVSEProcessing = "random"
+# AuthorizationRes END
+
+# ChargeParameterDiscoveryRes START
+
+[ChargeParameterDiscoveryRes]
+ResponseCode = "random"
+EVSEProcessing = "random"
+
+# Different for AC and DC charging mode
+# AC mode START
+[ChargeParameterDiscoveryRes.AC_EVSEChargeParameter.AC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+RCD = "random"
+
+[ChargeParameterDiscoveryRes.AC_EVSEChargeParameter.EVSENominalVoltage]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.AC_EVSEChargeParameter.EVSEMaxCurrent]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+# AC mode END
+# DC mode START
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEMaximumCurrentLimit]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEMaximumPowerLimit]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEMaximumVoltageLimit]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEMinimunCurrentLimit]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEMinimunVoltageLimit]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSECurrentRegulationTolerance]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEPeakCurrentRipple]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[ChargeParameterDiscoveryRes.DC_EVSEChargeParameter.EVSEEnergyToBeDelivered]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+# DC mode END
+# ChargeParameterDiscoveryRes END
+
+
+# PowerDeliveryRes START
+[PowerDeliveryRes]
+ResponseCode = "random"
+# Different for AC and DC charging mode
+# AC mode START
+[PowerDeliveryRes.AC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+RCD = "random"
+# AC mode END
+# DC mode START
+[PowerDeliveryRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+# DC mode END
+# PowerDeliveryRes END
+
+# MeteringReceiptRes START
+[MeteringReceiptRes]
+ResponseCode = "random"
+# Different for AC and DC charging mode
+# AC mode START
+[MeteringReceiptRes.AC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+RCD = "random"
+# AC mode END
+# DC mode START
+[MeteringReceiptRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+# DC mode END
+# MeteringReceiptRes END
+
+# SessionStopRes START
+[SessionStopRes]
+ResponseCode = "random"
+# SessionStopRes END
+
+# TODO
+[CertificateUpdateRes]
+
+# TODO
+[CertificateInstallationRes]
+
+# ChargingStatusRes START
+# This message is relevant only for AC charging mode
+[ChargingStatusRes]
+ResponseCode = "random"
+EVSEID = "random"
+SAScheduleTupleID = "random"
+ReceiptRequired = "random"
+
+[ChargingStatusRes.MeterInfo]
+MeterID = "random"
+
+[ChargingStatusRes.AC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+RCD = "random"
+# ChargingStatusRes END
+
+# CableCheckRes START
+# This message is relevant only for DC charging mode
+[CableCheckRes]
+ResponseCode = "random"
+EVSEProcessing = "random"
+
+[CableCheckRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+# CableCheckRes END
+
+# PreChargeRes START
+# This message is relevant only for DC charging mode
+[PreChargeRes]
+ResponseCode = "random"
+
+[PreChargeRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+
+[PreChargeRes.EVSEPresentVoltage]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+# PreChargeRes END
+
+# CurrentDemandRes START
+# This message is relevant only for DC charging mode
+[CurrentDemandRes]
+ResponseCode = "random"
+EVSECurrentLimitAchieved = "random"
+EVSEVoltageLimitAchieved = "random"
+EVSEPowerLimitAchieved = "random"
+EVSEID = "random"
+SAScheduleTupleID = "random"
+
+[CurrentDemandRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+
+[CurrentDemandRes.EVSEPresentVoltage]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[CurrentDemandRes.EVSEPresentCurrent]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[CurrentDemandRes.EVSEMaximumVoltage]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[CurrentDemandRes.EVSEMaximumCurrent]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+
+[CurrentDemandRes.EVSEMaximumPower]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+# CurrentDemandRes END
+
+# WeldingDetectionRes START
+# This message is relevant only for DC charging mode
+[WeldingDetectionRes]
+ResponseCode = "random"
+
+[WeldingDetectionRes.DC_EVSEStatus]
+NotificationMaxDelay = "random"
+EVSENotification = "random"
+EVSEIsolationStatus = "random"
+EVSEStatusCode = "random"
+
+[WeldingDetectionRes.EVSEPresentVoltage]
+Multiplier = "random"
+Unit = "random"
+Value = "random"
+# WeldingDetectionRes END
