@@ -19,6 +19,10 @@ class ParamFuzzMode(str, Enum):
     not complex types (like list).
     """
 
+    # Valid => Original value will be used
+    # This value should be passed to the fuzzer method as dict
+    # taken from the fuzzing dictionary
+    VALID = "valid"
     # Value will be chosen from invalud values randomly
     RANDOM = "random"
     # Value will be shorter than min length specified in schema
