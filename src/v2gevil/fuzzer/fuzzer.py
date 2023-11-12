@@ -700,6 +700,12 @@ class EVFuzzer:
 
         # MODE ALL - all parameters will be fuzzed
         # Config file is NOT used
+
+        # TODO: IMPORTANT
+        # TODO: Add some check if in modes for that messages
+        # param is not in modes and also not in required
+        # it will not include it
+        # if not in modes but in required it will be fuzzed (with valid value)
         if msg_config is None:
             # FUZZ ResponseCode
             # ResponseCode is enum type (in xml schema)

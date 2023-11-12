@@ -11,6 +11,7 @@ from ..messages.MsgDataTypes import (
     paymentOptionType,
     EnergyTransferModeType,
     EVSEProcessingType,
+    costKindType,
 )
 from ..fuzzer.fuzzer_enums import ParamFuzzMode
 from ..fuzzer.fuzz_types import (
@@ -31,6 +32,7 @@ from ..fuzzer.fuzz_types import (
     gen_malicous_base64,
     gen_invalid_hex_binary,
     gen_malicous_hex,
+    gen_invalid_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,10 +58,6 @@ def fuzz_schema_id(
             "Invalid fuzzing mode. Using random mode for schemaID fuzzing."
         )
         mode = ParamFuzzMode.RANDOM
-
-    # TODO: Maybe option for mode with SPECIAL_STRING should be
-    # handled here (also for other methods),
-    # because it's based on context of parameter
 
     return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_val)
 
@@ -1169,11 +1167,10 @@ def fuzz_p_max_schedule(
     return {"PMaxScheduleEntry": p_max_schedule_entry}
 
 
-def fuzz_id(mode: str = "valid", valid_val: Optional[str] = None):
-    """Fuzz xs:Id
-
-    Should not start with digit and should not contain ':'.
-    """
+def fuzz_id(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz Id"""
     # Convert mode to enum
     try:
         mode = ParamFuzzMode(mode)
@@ -1181,28 +1178,312 @@ def fuzz_id(mode: str = "valid", valid_val: Optional[str] = None):
         logger.warning("Invalid fuzzing mode for Id, using random mode.")
         mode = ParamFuzzMode.RANDOM
 
-
-def fuzz_sales_tariff_id():
-    pass
+    return gen_invalid_id(mode=mode, valid_val=valid_val)
 
 
-def fuzz_sales_tariff_description():
-    pass
+def fuzz_sales_tariff_id(
+    mode: str = "valid", valid_val: Optional[int] = None
+) -> Union[str, int, float]:
+    """Fuzz sales tariff id
+
+    SalesTariffID is type xs:unsignedByte (in xml schema), with restriction:
+        minInclusive value="1", maxInclusive value="255", valid values: 1-255
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for SalesTariffID, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    return gen_invalid_unsigned_byte(
+        mode=mode, min_val=1, max_val=255, valid_val=valid_val
+    )
 
 
-def fuzz_num_e_price_levels():
-    pass
+def fuzz_sales_tariff_description(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz sales tariff description
+
+    SalesTariffDescription is type xs:string (in xml schema), (maxLength: 32).
+    """
+    # COvert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for SalesTariffDescription, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    return gen_invalid_string(mode=mode, max_len=32, valid_val=valid_val)
 
 
-def fuzz_sales_tariff():
-    pass
+def fuzz_num_e_price_levels(
+    mode: str = "valid", valid_val: Optional[int] = None
+):
+    """Fuzz num e price levels
+
+    NumEPriceLevels is type xs:unsignedByte (in xml schema)
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for NumEPriceLevels, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    # TODO: maybe add only valid value = 1 => 1 EPriceLevel
+
+    return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_val)
+
+
+def fuzz_e_price_level(
+    mode: str = "valid", valid_val: Optional[int] = None
+) -> Union[str, int, float]:
+    """Fuzz EPriceLevel
+
+    EPriceLevel is type xs:unsignedByte (in xml schema)
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for EPriceLevel, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    # TODO: maybe add only valid value = 1 => 1 EPriceLevel
+    return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_val)
+
+
+# TODO: Convert all fuzz enum methods to use gen_invalid_string
+# pass something like possible_values from enum fuzz method to gen_invalid_string
+
+
+def fuzz_cost_kind(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz cost kind
+
+    costKind is enum, so valid value is one of the enum values costKindType.
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning("Invalid fuzzing mode for CostKind, using random mode.")
+        mode = ParamFuzzMode.RANDOM
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for CostKind, "
+                    "using default valid value randomly chosen from "
+                    "costKindType enum."
+                )
+                return random.choice(list(costKindType)).value
+            return valid_val
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            return gen_malicous_string()
+        case ParamFuzzMode.INT:
+            return gen_num()
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "costKindType, using random mode."
+                )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
+
+
+def fuzz_amount(mode: str = "valid", valid_val: Optional[int] = None):
+    """Fuzz amount
+
+    amount is type xs:unsignedInt (in xml schema)
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning("Invalid fuzzing mode for amount, using random mode.")
+        mode = ParamFuzzMode.RANDOM
+
+    return gen_invalid_unsigned_int(mode=mode, valid_val=valid_val)
+
+
+def fuzz_amount_multiplier(
+    mode: str = "valid", valid_val: Optional[int] = None
+):
+    """Fuzz amount multiplier
+
+    amountMultiplier is type xs:byte (in xml schema), with restrictions:
+        minInclusive value="-3", maxInclusive value="3"
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for amountMultiplier, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    return gen_invalid_byte(
+        mode=mode, min_val=-3, max_val=3, valid_val=valid_val
+    )
+
+
+def fuzz_cost(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz cost
+
+    Cost is complex type, so it has elements: costKind, amount, amountMultiplier
+    """
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["costKind", "amount", "amountMultiplier"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    cost_kind = fuzz_cost_kind(
+        mode=modes["costKind"], valid_val=valid_values["costKind"]
+    )
+    amount = fuzz_amount(
+        mode=modes["amount"], valid_val=valid_values["amount"]
+    )
+    amount_multiplier = fuzz_amount_multiplier(
+        mode=modes["amountMultiplier"],
+        valid_val=valid_values["amountMultiplier"],
+    )
+
+    return {
+        "costKind": cost_kind,
+        "amount": amount,
+        "amountMultiplier": amount_multiplier,
+    }
+
+
+def fuzz_consumption_cost(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz consumption cost
+
+    ConsumptionCost is complex type, so it has elements: startValue, Cost
+    """
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["startValue", "Cost"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    start_value = fuzz_physical_value_type(
+        modes=modes["startValue"], valid_values=valid_values["startValue"]
+    )
+
+    cost = [fuzz_cost(modes=modes["Cost"], valid_values=valid_values["Cost"])]
+
+    return {"startValue": start_value, "Cost": cost}
+
+
+def fuzz_sales_tariff_entry(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["RelativeTimeInterval", "EPriceLevel", "ConsumptionCost"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    time_interval = fuzz_time_interval(
+        modes=modes["RelativeTimeInterval"],
+        valid_values=valid_values["RelativeTimeInterval"],
+    )
+    e_price_level = fuzz_e_price_level(
+        mode=modes["EPriceLevel"], valid_val=valid_values["EPriceLevel"]
+    )
+
+    consumption_cost = [
+        fuzz_consumption_cost(
+            modes=modes["ConsumptionCost"],
+            valid_values=valid_values["ConsumptionCost"],
+        )
+    ]
+
+    return {
+        "RelativeTimeInterval": time_interval,
+        "EPriceLevel": e_price_level,
+        "ConsumptionCost": consumption_cost,
+    }
 
 
 def fuzz_sales_tariff(
     modes: Optional[dict] = None, valid_values: Optional[dict] = None
 ) -> dict:
-    # TODO
+    """Fuzz sales tariff"""
 
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in [
+        "Id",
+        "SalesTariffID",
+        "SalesTariffDescription",
+        "NumEPriceLevels",
+        "SalesTariffEntry",
+    ]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
     # xs:id
     id = fuzz_id(mode=modes["Id"], valid_val=valid_values["Id"])
     # xs:unsignedByte
@@ -1210,11 +1491,17 @@ def fuzz_sales_tariff(
         mode=modes["Id"], valid_val=valid_values["Id"]
     )
     # xs:string
-    sales_tariff_description = fuzz_sales_tariff_description()
+    sales_tariff_description = fuzz_sales_tariff_description(
+        mode=modes["SalesTariffDescription"],
+        valid_val=valid_values["SalesTariffDescription"],
+    )
+    # xs:unsignedByte
+    num_e_price_levels = fuzz_num_e_price_levels(
+        mode=modes["NumEPriceLevels"],
+        valid_val=valid_values["NumEPriceLevels"],
+    )
 
-    num_e_price_levels = fuzz_num_e_price_levels()
-
-    sales_sales_tariff_entry = fuzz_sales_tariff_entry()
+    sales_sales_tariff_entry = [fuzz_sales_tariff_entry()]
 
     return {
         "@Id": id,
@@ -1295,11 +1582,13 @@ def fuzz_sa_schedule_list(
 
 def fuzz_ac_evse_charge_parameter() -> str:
     """Fuzz ac evse charge parameter"""
+    # TODO NEXT
     raise NotImplementedError
 
 
 def fuzz_dc_evse_charge_parameter() -> str:
     """Fuzz dc evse charge parameter"""
+    # TODO NEXT
     raise NotImplementedError
 
 

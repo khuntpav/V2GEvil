@@ -17,11 +17,79 @@ def gen_random_string(length: int) -> str:
     """Generate random string of given length"""
     # TODO: Maybe use also punctuation (special characters)
     # or all possible characters? string.printable
+    if length < 0:
+        logger.warning(
+            "Length of string is negative, using absolute value of length."
+        )
+        length = abs(length)
     return "".join(random.choice(string.ascii_letters) for _ in range(length))
 
 
+def gen_num(
+    float_flag: bool = False,
+    negative_flag: bool = False,
+) -> Union[int, float]:
+    """Generate number (int or float)"""
+    if float_flag:
+        num = random.uniform(-9223372036854775808, 9223372036854775807)
+
+    num = random.randint(-9223372036854775808, 9223372036854775807)
+
+    if negative_flag and num > 0 or not negative_flag and num < 0:
+        return -1 * num
+
+    return num
+
+
+def gen_invalid_num(
+    float_flag: bool = False,
+    over_flag: bool = False,
+    under_flag: bool = False,
+    lower_limit_neg: int = -9223372036854775808,
+    upper_limit_neg: int = 0,
+    lower_limit_pos: int = 0,
+    upper_limit_pos: int = 9223372036854775807,
+) -> Union[int, float]:
+    """General method for generating invalid number (int or float)"""
+
+    if float_flag:
+        # Value under range
+        if under_flag:
+            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
+            return lower_value
+        # Value over range
+        if over_flag:
+            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
+            return higher_value
+
+        # no under or over flag => valid range but float
+        # => invalid type from valid range
+        invalid_number = random.uniform(
+            upper_limit_neg + 1, lower_limit_pos - 1
+        )
+        return invalid_number
+
+    # int number
+    if under_flag:
+        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
+        return lower_value
+    if over_flag:
+        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
+        return higher_value
+
+    # no under or over flag => random choice
+    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
+    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
+    invalid_number = random.choice([lower_value, higher_value])
+
+    return invalid_number
+
+
 def gen_invalid_string(
-    mode: ParamFuzzMode = ParamFuzzMode.RANDOM, valid_val: Optional[str] = None
+    mode: ParamFuzzMode = ParamFuzzMode.RANDOM,
+    valid_val: Optional[str] = None,
+    min_len=1,
+    max_len=100,
 ) -> Union[str, int, float]:
     """Generate invalid string"""
 
@@ -34,8 +102,14 @@ def gen_invalid_string(
                     "Disclaimer: Generated value - meets the conditions for length "
                     "and type but may not meet the valid value for particular parameter."
                 )
-                return gen_random_string(random.randint(1, 100))
+                return gen_random_string(random.randint(min_len, max_len))
             return valid_val
+        case ParamFuzzMode.SHORT_STRING:
+            return gen_random_string(random.randint(0, min_len - 1))
+        case ParamFuzzMode.LONG_STRING:
+            return gen_random_string(
+                random.randint(max_len + 1, max_len + 100)
+            )
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
         case ParamFuzzMode.INT:
@@ -52,22 +126,17 @@ def gen_invalid_string(
                     "Invalid fuzzing mode for parameter with type "
                     "string, using random mode."
                 )
-            special_string = gen_malicous_string()
-            invalid_num = gen_num(float_flag=False, negative_flag=False)
-            invalid_neg_num = gen_num(float_flag=False, negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True, negative_flag=False)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-            return random.choice(
-                [
-                    special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+            # shorter str, longer str, special str, int, negative int, float, negative float
+            invalid_values = [
+                gen_random_string(random.randint(0, min_len - 1)),
+                gen_random_string(random.randint(max_len + 1, max_len + 100)),
+                gen_malicous_string(),
+                gen_num(float_flag=False, negative_flag=False),
+                gen_num(float_flag=False, negative_flag=True),
+                gen_num(float_flag=True, negative_flag=False),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
 
 
 def gen_malicous_string(valid_string: str = "") -> str:
@@ -83,7 +152,7 @@ def gen_malicous_string(valid_string: str = "") -> str:
     raise NotImplementedError
 
 
-def gen_malicous_hex() -> str:
+def gen_malicous_hex(valid_hex: str = "") -> str:
     """Generate malicious hex.
 
     Hex with special meaning in different context or language like
@@ -93,7 +162,7 @@ def gen_malicous_hex() -> str:
     raise NotImplementedError
 
 
-def gen_malicous_base64() -> str:
+def gen_malicous_base64(valid_base64: str = "") -> str:
     """Generate malicious base64.
 
     Base64 with special meaning in different context or language like
@@ -130,37 +199,18 @@ def gen_invalid_int_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-        # no under or over flag => valid range but float
-        # => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_int(
@@ -178,13 +228,6 @@ def gen_invalid_int(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_int_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_int_num(
                 float_flag=False,
@@ -192,21 +235,28 @@ def gen_invalid_int(
                 min_val=min_val,
                 max_val=max_val,
             )
-        case ParamFuzzMode.FLOAT:
+        case ParamFuzzMode.OVER_INT:
             return gen_invalid_int_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_int_num(
-                float_flag=True,
+                float_flag=False,
                 over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
+            )
+        case ParamFuzzMode.FLOAT:
+            return gen_invalid_int_num(
+                float_flag=True, min_val=min_val, max_val=max_val
             )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_int_num(
                 float_flag=True,
                 under_flag=True,
+                min_val=min_val,
+                max_val=max_val,
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_int_num(
+                float_flag=True,
+                over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
             )
@@ -216,43 +266,40 @@ def gen_invalid_int(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:int, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_int_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_num = gen_invalid_int_num(
-                float_flag=False,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_over_float_num = gen_invalid_int_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_float_num = gen_invalid_int_num(
-                float_flag=True,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_int_num(
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_int_num(
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_int_num(
+                    float_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_int_num(
+                    float_flag=True,
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_int_num(
+                    float_flag=True,
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_unsigned_int_num(
@@ -279,37 +326,18 @@ def gen_invalid_unsigned_int_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-        # no under or over flag => valid range but float
-        # => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_unsigned_int(
@@ -341,13 +369,6 @@ def gen_invalid_unsigned_int(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_unsigned_int_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_unsigned_int_num(
                 float_flag=False,
@@ -355,21 +376,28 @@ def gen_invalid_unsigned_int(
                 min_val=min_val,
                 max_val=max_val,
             )
-        case ParamFuzzMode.FLOAT:
+        case ParamFuzzMode.OVER_INT:
             return gen_invalid_unsigned_int_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_unsigned_int_num(
-                float_flag=True,
+                float_flag=False,
                 over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
+            )
+        case ParamFuzzMode.FLOAT:
+            return gen_invalid_unsigned_int_num(
+                float_flag=True, min_val=min_val, max_val=max_val
             )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_unsigned_int_num(
                 float_flag=True,
                 under_flag=True,
+                min_val=min_val,
+                max_val=max_val,
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_unsigned_int_num(
+                float_flag=True,
+                over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
             )
@@ -379,47 +407,40 @@ def gen_invalid_unsigned_int(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:unsignedInt, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_unsigned_int_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_num = gen_invalid_unsigned_int_num(
-                float_flag=False,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_float_num = gen_invalid_unsigned_int_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-            invalid_over_float_num = gen_invalid_unsigned_int_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_float_num = gen_invalid_unsigned_int_num(
-                float_flag=True,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_unsigned_int_num(
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_unsigned_int_num(
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_unsigned_int_num(
+                    float_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_unsigned_int_num(
+                    float_flag=True,
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_unsigned_int_num(
+                    float_flag=True,
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_float_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_byte_num(
@@ -452,35 +473,18 @@ def gen_invalid_byte_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
-        # no under or over flag => float value from valid range
-        # invalid type from valid range
-        invalid_number = random.uniform(upper_limit_neg, lower_limit_pos)
-        return invalid_number
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    # Normal int is valid choice, so randomly choose from invalid ranges
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_byte(
@@ -516,13 +520,6 @@ def gen_invalid_byte(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_byte_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_byte_num(
                 float_flag=False,
@@ -530,21 +527,28 @@ def gen_invalid_byte(
                 min_val=min_val,
                 max_val=max_val,
             )
-        case ParamFuzzMode.FLOAT:
+        case ParamFuzzMode.OVER_INT:
             return gen_invalid_byte_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_byte_num(
-                float_flag=True,
+                float_flag=False,
                 over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
+            )
+        case ParamFuzzMode.FLOAT:
+            return gen_invalid_byte_num(
+                float_flag=True, min_val=min_val, max_val=max_val
             )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_byte_num(
                 float_flag=True,
                 under_flag=True,
+                min_val=min_val,
+                max_val=max_val,
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_byte_num(
+                float_flag=True,
+                over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
             )
@@ -554,47 +558,34 @@ def gen_invalid_byte(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:byte, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_byte_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_num = gen_invalid_byte_num(
-                float_flag=False,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_float_num = gen_invalid_byte_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-            invalid_over_float_num = gen_invalid_byte_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_float_num = gen_invalid_byte_num(
-                float_flag=True,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_byte_num(
+                    under_flag=True, min_val=min_val, max_val=max_val
+                ),
+                gen_invalid_byte_num(
+                    over_flag=True, min_val=min_val, max_val=max_val
+                ),
+                gen_invalid_byte_num(
+                    float_flag=True, min_val=min_val, max_val=max_val
+                ),
+                gen_invalid_byte_num(
+                    float_flag=True,
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_byte_num(
+                    float_flag=True,
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_float_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_unsigned_byte_num(
@@ -629,41 +620,18 @@ def gen_invalid_unsigned_byte_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
-        # no under or over flag => random choice
-        # lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-        # higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-        # invalid_number = random.choice([lower_value, higher_value])
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-        # valid range but float => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    # Normal int is valid choice, so randomly choose from invalid ranges
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_unsigned_byte(
@@ -702,13 +670,6 @@ def gen_invalid_unsigned_byte(
         case ParamFuzzMode.SPECIAL_STRING:
             # TODO: implement use of valid_val
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_unsigned_byte_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_unsigned_byte_num(
                 float_flag=False,
@@ -716,16 +677,20 @@ def gen_invalid_unsigned_byte(
                 min_val=min_val,
                 max_val=max_val,
             )
+        case ParamFuzzMode.OVER_INT:
+            return gen_invalid_unsigned_byte_num(
+                float_flag=False,
+                over_flag=True,
+                min_val=min_val,
+                max_val=max_val,
+            )
         case ParamFuzzMode.INT:
             return gen_invalid_unsigned_byte_num(
                 float_flag=False, min_val=min_val, max_val=max_val
             )
-        case ParamFuzzMode.OVER_FLOAT:
+        case ParamFuzzMode.FLOAT:
             return gen_invalid_unsigned_byte_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
+                float_flag=True, min_val=min_val, max_val=max_val
             )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_unsigned_byte_num(
@@ -734,9 +699,12 @@ def gen_invalid_unsigned_byte(
                 min_val=min_val,
                 max_val=max_val,
             )
-        case ParamFuzzMode.FLOAT:
+        case ParamFuzzMode.OVER_FLOAT:
             return gen_invalid_unsigned_byte_num(
-                float_flag=True, min_val=min_val, max_val=max_val
+                float_flag=True,
+                over_flag=True,
+                min_val=min_val,
+                max_val=max_val,
             )
         case _:
             if mode is not ParamFuzzMode.RANDOM:
@@ -744,63 +712,34 @@ def gen_invalid_unsigned_byte(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:unsignedByte, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_unsigned_byte_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_num = gen_invalid_unsigned_byte_num(
-                float_flag=False,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_over_float_num = gen_invalid_unsigned_byte_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_float_num = gen_invalid_unsigned_byte_num(
-                float_flag=True,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_float_num = gen_invalid_unsigned_byte_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_unsigned_byte_num(
+                    under_flag=True, max_val=max_val, min_val=min_val
+                ),
+                gen_invalid_unsigned_byte_num(
+                    over_flag=True, max_val=max_val, min_val=min_val
+                ),
+                gen_invalid_unsigned_byte_num(
+                    float_flag=True, max_val=max_val, min_val=min_val
+                ),
+                gen_invalid_unsigned_byte_num(
+                    float_flag=True,
+                    under_flag=True,
+                    max_val=max_val,
+                    min_val=min_val,
+                ),
+                gen_invalid_unsigned_byte_num(
+                    float_flag=True,
+                    over_flag=True,
+                    max_val=max_val,
+                    min_val=min_val,
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                    invalid_float_num,
-                ]
-            )
-
-
-def gen_num(
-    float_flag: bool = False,
-    negative_flag: bool = False,
-) -> Union[int, float]:
-    """Generate number (int or float)"""
-    if float_flag:
-        num = random.uniform(-9223372036854775808, 9223372036854775807)
-
-    num = random.randint(-9223372036854775808, 9223372036854775807)
-
-    if negative_flag and num > 0 or not negative_flag and num < 0:
-        return -1 * num
-
-    return num
+            return random.choice(invalid_values)
 
 
 def gen_invalid_bool(
@@ -828,25 +767,17 @@ def gen_invalid_bool(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:boolean, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            special_string = gen_malicous_string()
-            invalid_num = gen_num(float_flag=False, negative_flag=False)
-            invalid_neg_num = gen_num(float_flag=False, negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True, negative_flag=False)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
+            # string, special string, int, negative int, float, negative float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(float_flag=False, negative_flag=False),
+                gen_num(float_flag=False, negative_flag=True),
+                gen_num(float_flag=True, negative_flag=False),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_unsigned_long_num(
@@ -876,41 +807,18 @@ def gen_invalid_unsigned_long_num(
     # Set to 2^127 - 1
     upper_limit_pos = 170141183460469231731687303715884105727
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
-        # no under or over flag => random choice
-        # lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-        # higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-        # invalid_number = random.choice([lower_value, higher_value])
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-        # valid range but float => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    # Normal int is valid choice, so randomly choose from invalid ranges
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_unsigned_long(
@@ -926,23 +834,23 @@ def gen_invalid_unsigned_long(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_unsigned_long_num(
-                float_flag=False, over_flag=True
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_unsigned_long_num(
                 float_flag=False, under_flag=True
             )
+        case ParamFuzzMode.OVER_INT:
+            return gen_invalid_unsigned_long_num(
+                float_flag=False, over_flag=True
+            )
         case ParamFuzzMode.FLOAT:
             return gen_invalid_unsigned_long_num(float_flag=True)
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_unsigned_long_num(
-                float_flag=True, over_flag=True
-            )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_unsigned_long_num(
                 float_flag=True, under_flag=True
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_unsigned_long_num(
+                float_flag=True, over_flag=True
             )
         case _:
             if mode is not ParamFuzzMode.RANDOM:
@@ -950,33 +858,20 @@ def gen_invalid_unsigned_long(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:unsignedLong, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_unsigned_long_num(
-                float_flag=False, over_flag=True
-            )
-            invalid_under_num = gen_invalid_unsigned_long_num(
-                float_flag=False, under_flag=True
-            )
-            invalid_float_num = gen_invalid_unsigned_long_num(float_flag=True)
-            invalid_over_float_num = gen_invalid_unsigned_long_num(
-                float_flag=True, over_flag=True
-            )
-            invalid_under_float_num = gen_invalid_unsigned_long_num(
-                float_flag=True, under_flag=True
-            )
+            # string, special string, under int, over int, float, over float, under float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_unsigned_long_num(over_flag=True),
+                gen_invalid_unsigned_long_num(under_flag=True),
+                gen_invalid_unsigned_long_num(float_flag=True),
+                gen_invalid_unsigned_long_num(float_flag=True, over_flag=True),
+                gen_invalid_unsigned_long_num(
+                    float_flag=True, under_flag=True
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_float_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_short_num(
@@ -1006,37 +901,17 @@ def gen_invalid_short_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
-
-        # no under or over flag => valid range but float
-        # => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
+    return invalid_num
 
 
 def gen_invalid_short(
@@ -1078,13 +953,6 @@ def gen_invalid_short(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_short_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_short_num(
                 float_flag=False,
@@ -1092,21 +960,28 @@ def gen_invalid_short(
                 min_val=min_val,
                 max_val=max_val,
             )
-        case ParamFuzzMode.FLOAT:
+        case ParamFuzzMode.OVER_INT:
             return gen_invalid_short_num(
-                float_flag=True, min_val=min_val, max_val=max_val
-            )
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_short_num(
-                float_flag=True,
+                float_flag=False,
                 over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
+            )
+        case ParamFuzzMode.FLOAT:
+            return gen_invalid_short_num(
+                float_flag=True, min_val=min_val, max_val=max_val
             )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_short_num(
                 float_flag=True,
                 under_flag=True,
+                min_val=min_val,
+                max_val=max_val,
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_short_num(
+                float_flag=True,
+                over_flag=True,
                 min_val=min_val,
                 max_val=max_val,
             )
@@ -1116,43 +991,40 @@ def gen_invalid_short(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:short, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_short_num(
-                float_flag=False,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_num = gen_invalid_short_num(
-                float_flag=False,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_over_float_num = gen_invalid_short_num(
-                float_flag=True,
-                over_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
-            invalid_under_float_num = gen_invalid_short_num(
-                float_flag=True,
-                under_flag=True,
-                min_val=min_val,
-                max_val=max_val,
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_short_num(
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_short_num(
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_short_num(
+                    float_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_short_num(
+                    float_flag=True,
+                    under_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+                gen_invalid_short_num(
+                    float_flag=True,
+                    over_flag=True,
+                    min_val=min_val,
+                    max_val=max_val,
+                ),
+            ]
 
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            return random.choice(invalid_values)
 
 
 def gen_invalid_unsigned_short_num(
@@ -1171,37 +1043,17 @@ def gen_invalid_unsigned_short_num(
     # Set to 2^63 - 1
     upper_limit_pos = 9223372036854775807
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-        # no under or over flag => valid range but float
-        # => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
-
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_unsigned_short(
@@ -1227,23 +1079,23 @@ def gen_invalid_unsigned_short(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_unsigned_short_num(
-                float_flag=False, over_flag=True
-            )
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_unsigned_short_num(
                 float_flag=False, under_flag=True
             )
+        case ParamFuzzMode.OVER_INT:
+            return gen_invalid_unsigned_short_num(
+                float_flag=False, over_flag=True
+            )
         case ParamFuzzMode.FLOAT:
             return gen_invalid_unsigned_short_num(float_flag=True)
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_unsigned_short_num(
-                float_flag=True, over_flag=True
-            )
         case ParamFuzzMode.UNDER_FLOAT:
             return gen_invalid_unsigned_short_num(
                 float_flag=True, under_flag=True
+            )
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_unsigned_short_num(
+                float_flag=True, over_flag=True
             )
         case _:
             if mode is not ParamFuzzMode.RANDOM:
@@ -1251,32 +1103,22 @@ def gen_invalid_unsigned_short(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:unsignedShort, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_unsigned_short_num(
-                float_flag=False, over_flag=True
-            )
-            invalid_under_num = gen_invalid_unsigned_short_num(
-                float_flag=False, under_flag=True
-            )
-            invalid_float_num = gen_invalid_unsigned_short_num(float_flag=True)
-            invalid_over_float_num = gen_invalid_unsigned_short_num(
-                float_flag=True, over_flag=True
-            )
-            invalid_under_float_num = gen_invalid_unsigned_short_num(
-                float_flag=True, under_flag=True
-            )
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_float_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                ]
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_unsigned_short_num(under_flag=True),
+                gen_invalid_unsigned_short_num(over_flag=True),
+                gen_invalid_unsigned_short_num(float_flag=True),
+                gen_invalid_unsigned_short_num(
+                    float_flag=True, under_flag=True
+                ),
+                gen_invalid_unsigned_short_num(
+                    float_flag=True, over_flag=True
+                ),
+            ]
+
+            return random.choice(invalid_values)
 
 
 def gen_invalid_long_num(
@@ -1296,36 +1138,18 @@ def gen_invalid_long_num(
     # Set to 2^127 - 1
     upper_limit_pos = 170141183460469231731687303715884105727
 
-    if float_flag:
-        # Value under range
-        if under_flag:
-            lower_value = random.uniform(lower_limit_neg, upper_limit_neg)
-            return lower_value
-        # Value over range
-        if over_flag:
-            higher_value = random.uniform(lower_limit_pos, upper_limit_pos)
-            return higher_value
-        # no under or over flag => valid range but float
-        # => invalid type from valid range
-        invalid_number = random.uniform(
-            upper_limit_neg + 1, lower_limit_pos - 1
-        )
-        return invalid_number
+    # Call general method for generating invalid number
+    invalid_num = gen_invalid_num(
+        float_flag=float_flag,
+        under_flag=under_flag,
+        over_flag=over_flag,
+        lower_limit_neg=lower_limit_neg,
+        upper_limit_neg=upper_limit_neg,
+        lower_limit_pos=lower_limit_pos,
+        upper_limit_pos=upper_limit_pos,
+    )
 
-    # int number
-    if under_flag:
-        lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-        return lower_value
-    if over_flag:
-        higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-        return higher_value
-
-    # no under or over flag => random choice
-    lower_value = random.randint(lower_limit_neg, upper_limit_neg)
-    higher_value = random.randint(lower_limit_pos, upper_limit_pos)
-    invalid_number = random.choice([lower_value, higher_value])
-
-    return invalid_number
+    return invalid_num
 
 
 def gen_invalid_long(
@@ -1353,48 +1177,34 @@ def gen_invalid_long(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.OVER_INT:
-            return gen_invalid_long_num(float_flag=False, over_flag=True)
         case ParamFuzzMode.UNDER_INT:
             return gen_invalid_long_num(float_flag=False, under_flag=True)
-        case ParamFuzzMode.OVER_FLOAT:
-            return gen_invalid_long_num(float_flag=True, over_flag=True)
-        case ParamFuzzMode.UNDER_FLOAT:
-            return gen_invalid_long_num(float_flag=True, under_flag=True)
+        case ParamFuzzMode.OVER_INT:
+            return gen_invalid_long_num(float_flag=False, over_flag=True)
         case ParamFuzzMode.FLOAT:
             return gen_invalid_long_num(float_flag=True)
+        case ParamFuzzMode.UNDER_FLOAT:
+            return gen_invalid_long_num(float_flag=True, under_flag=True)
+        case ParamFuzzMode.OVER_FLOAT:
+            return gen_invalid_long_num(float_flag=True, over_flag=True)
+
         case _:
             if mode is not ParamFuzzMode.RANDOM:
                 logger.warning(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:long, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_over_num = gen_invalid_long_num(
-                float_flag=False, under_flag=True
-            )
-            invalid_under_num = gen_invalid_long_num(
-                float_flag=False, over_flag=True
-            )
-            invalid_over_float_num = gen_invalid_long_num(
-                float_flag=True, under_flag=True
-            )
-            invalid_under_float_num = gen_invalid_long_num(
-                float_flag=True, over_flag=True
-            )
-            invalid_float_num = gen_invalid_long_num(float_flag=True)
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_over_num,
-                    invalid_under_num,
-                    invalid_over_float_num,
-                    invalid_under_float_num,
-                    invalid_float_num,
-                ]
-            )
+            # string, special string, under int, over int, float, under float, over float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_long_num(under_flag=True),
+                gen_invalid_long_num(over_flag=True),
+                gen_invalid_long_num(float_flag=True),
+                gen_invalid_long_num(float_flag=True, under_flag=True),
+                gen_invalid_long_num(float_flag=True, over_flag=True),
+            ]
+            return random.choice(invalid_values)
 
 
 def gen_invalid_base64_binary(
@@ -1461,3 +1271,53 @@ def gen_invalid_hex_binary(
 
     # Length is randomly generated
     return random.randbytes(random.randint(1, 100)).hex()
+
+
+def gen_invalid_id(
+    mode: ParamFuzzMode = ParamFuzzMode.RANDOM, valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz xs:Id
+
+    Should not start with digit and should not contain ':'.
+    """
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for xs:Id, "
+                    "using valid value randomly generated."
+                    "Disclaimer: Generated value - meets the conditions for length "
+                    "and type but may not meet the valid value for particular parameter."
+                )
+                return "ID00" + str(random.randint(1, 99))
+            return valid_val
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            return gen_malicous_string()
+        case ParamFuzzMode.INT:
+            return gen_num(float_flag=False, negative_flag=False)
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(float_flag=False, negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True, negative_flag=False)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "xs:Id, using random mode."
+                )
+            # string, special string, int, negative int, float, negative float
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(float_flag=False, negative_flag=False),
+                gen_num(float_flag=False, negative_flag=True),
+                gen_num(float_flag=True, negative_flag=False),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+
+            return random.choice(invalid_values)
