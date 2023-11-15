@@ -16,8 +16,8 @@ from ..messages.MsgDataTypes import (
     isolationLevelType,
     DC_EVSEStatusCodeType,
 )
-from ..fuzzer.fuzzer_enums import ParamFuzzMode
-from ..fuzzer.fuzz_types import (
+from .fuzzer_enums import ParamFuzzMode
+from .fuzz_types import (
     gen_random_string,
     gen_num,
     gen_invalid_bool,
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 def fuzz_schema_id(
-    mode: str = "valid", valid_val: Optional[int] = None
+    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
 ) -> Union[str, int, float]:
     """Fuzz schema id
 
@@ -53,16 +53,49 @@ def fuzz_schema_id(
     Relevant modes: random, string, int, over-int,
         under-int, float, over-float, under-float
     """
+    # TODO: IMPORTANT
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+
+    # If attr_conf is None => fuzz with random mode
+    # if attr_conf is None:
+    #     attr_conf = {"Mode": "random"}
+    # else:
+    #     # attr_conf is not None and attr_conf is empty dict
+    #     if not attr_conf:
+
+    # In complex params will be attr_conf dict
+    # required_fields =
+    # all_fields =
+    # if attr_conf is None:
+    #     attr_conf = {}
+    #     for field in all_fields:
+    #         attr_conf[field] = None
+    # else:
+    #     # attr_conf is empty => pass to all required fields {}
+    #     # => fuzz with random mode for end parameter
+    #     # {} means random mode for every required field/parameter
+    #     if not attr_conf:
+    #         for field in required_fields:
+    #             attr_conf[field] = {}
+    #     else:
+    #         # Field is in required_fields
+    #         # but user didn't specify mode => pass {} to each parameter
+    #         # => fuzz with random mode for end parameter
+    #         # So not specified parameter will be fuzzed with random mode
+    #         for field in required_fields:
+    #             if field not in msg_config:
+    #                 msg_config[field] = {}
+
     # Convert mode to enum
     try:
-        mode = ParamFuzzMode(mode)
+        mode = ParamFuzzMode(attr_conf["Mode"])
     except ValueError:
         logger.warning(
             "Invalid fuzzing mode. Using random mode for schemaID fuzzing."
         )
         mode = ParamFuzzMode.RANDOM
 
-    return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_val)
+    return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_values)
 
 
 def fuzz_response_code(
@@ -474,7 +507,8 @@ def fuzz_supported_energy_transfer_mode(
 
     energy_transfered_mode = [
         fuzz_energy_transfer_mode(
-            mode=modes["EnergyTransferMode"], valid_val=valid_values["EnergyTransferMode"]
+            mode=modes["EnergyTransferMode"],
+            valid_val=valid_values["EnergyTransferMode"],
         )
     ]
 
@@ -2700,7 +2734,7 @@ def fuzz_evse_present_current(
     EVSEPresentCurrent is complexType: PhysicalValueType.
     """
     # TODO
-    #if isinstance(modes, dict):
+    # if isinstance(modes, dict):
     #    # If dict is empty
     #    if not modes:
     if modes is None:

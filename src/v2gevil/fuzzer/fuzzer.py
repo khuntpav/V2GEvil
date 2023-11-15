@@ -20,7 +20,7 @@ from ..messages import generator
 from ..station.station_enums import EVSEChargingMode, EVSEDetails
 from ..station import station
 from .fuzzer_enums import EVFuzzMode, MessageName
-from .fuzz_params import (
+from .fuzz_datatypes import (
     fuzz_response_code,
     fuzz_sa_provisioning_certificate_chain,
     fuzz_contract_signature_cert_chain,

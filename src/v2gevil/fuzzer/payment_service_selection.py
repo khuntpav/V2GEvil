@@ -3,7 +3,7 @@
 from typing import Optional
 import logging
 
-from .fuzz_params import fuzz_response_code
+from .fuzz_datatypes import fuzz_response_code
 from .fuzz_msg_general import general_msg_fuzzing_method
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from .fuzz_params import (
+from .fuzz_datatypes import (
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_sa_schedule_tuple_id,

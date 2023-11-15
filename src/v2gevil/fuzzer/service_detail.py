@@ -3,7 +3,7 @@
 from typing import Optional
 import logging
 
-from .fuzz_params import (
+from .fuzz_datatypes import (
     fuzz_response_code,
     fuzz_service_id,
     fuzz_service_parameter_list,

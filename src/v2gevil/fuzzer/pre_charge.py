@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from .fuzz_params import (
+from .fuzz_datatypes import (
     fuzz_response_code,
     fuzz_dc_evse_status,
     fuzz_evse_present_voltage,

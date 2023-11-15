@@ -42,6 +42,7 @@ def station_tools():
     show_default=True,
     help="Charging mode of the EVSE. Possible values: AC, DC",
 )
+# TODO: Should i delete it? Because for custom dict is option in Fuzzer
 @click.option(
     "--custom-dict",
     "custom_dict_filename",
@@ -83,7 +84,7 @@ def start_station(
             interface=interface,
             accept_security=accept_security,
             charging_mode=charging_mode,
-            custom_dict=custom_dict,
+            req_res_map=custom_dict,
         )
     else:
         # Deprecated

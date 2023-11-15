@@ -4,7 +4,7 @@ from typing import Optional
 import logging
 
 from ..station.station_enums import EVSEChargingMode
-from .fuzz_params import (
+from .fuzz_datatypes import (
     fuzz_response_code,
     fuzz_ac_evse_status,
     fuzz_dc_evse_status,
