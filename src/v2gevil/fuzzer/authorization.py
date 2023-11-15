@@ -36,7 +36,7 @@ class FuzzerAuthorizationRes:
         required_fields = ["ResponseCode", "EVSEProcessing"]
 
         # All possible fields (required/optional) define in the standard
-        all_fields = ["ResponseCode", "EVSEProcessing"]
+        all_fields = list(pairs_name_method.keys())
 
         return general_msg_fuzzing_method(
             required_fields=required_fields,

@@ -1,22 +1,17 @@
-"""Fuzzer classes for Service Discovery Request and Response messages"""
+"""Fuzzer classes for Power Delivery request and response messages."""
 
 from typing import Optional
 import logging
 
-from .fuzz_params import (
-    fuzz_response_code,
-    fuzz_payment_option_list,
-    fuzz_charge_service,
-    fuzz_service_list,
-)
-
 from .fuzz_msg_general import general_msg_fuzzing_method
+from .fuzz_params import fuzz_response_code
+
 
 logger = logging.getLogger(__name__)
 
 
-class FuzzerServiceDiscoveryRes:
-    """Fuzzer Class for Session Setup Response message"""
+class FuzzerSessionStopRes:
+    """Fuzzer Class for Session Stop Response message"""
 
     def __init__(
         self,
@@ -36,16 +31,14 @@ class FuzzerServiceDiscoveryRes:
         # Pairs of parameter/field name and fuzzing method
         pairs_name_method = {
             "ResponseCode": fuzz_response_code,
-            "PaymentOptionList": fuzz_payment_option_list,
-            "ChargeService": fuzz_charge_service,
-            "ServiceList": fuzz_service_list,
         }
         # Required fields define in the standard
-        required_fields = ["ResponseCode", "PaymentOptionList" "ChargeService"]
+        required_fields = ["ResponseCode"]
 
         # All possible fields (required/optional) define in the standard
-        all_fields = list(pairs_name_method.keys())
+        all_fields = ["ResponseCode"]
 
+        # Call general method for fuzzing message
         return general_msg_fuzzing_method(
             required_fields=required_fields,
             all_fields=all_fields,

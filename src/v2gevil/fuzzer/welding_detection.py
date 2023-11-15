@@ -1,22 +1,17 @@
-"""Fuzzer classes for Service Discovery Request and Response messages"""
+"""Fuzzer classes for Welding Detection request and response messages."""
 
 from typing import Optional
-import logging
 
 from .fuzz_params import (
     fuzz_response_code,
-    fuzz_payment_option_list,
-    fuzz_charge_service,
-    fuzz_service_list,
+    fuzz_dc_evse_status,
+    fuzz_evse_present_voltage,
 )
-
 from .fuzz_msg_general import general_msg_fuzzing_method
 
-logger = logging.getLogger(__name__)
 
-
-class FuzzerServiceDiscoveryRes:
-    """Fuzzer Class for Session Setup Response message"""
+class FuzzerWeldingDetectionRes:
+    """Fuzzer class for Welding Detection response message"""
 
     def __init__(
         self,
@@ -36,22 +31,24 @@ class FuzzerServiceDiscoveryRes:
         # Pairs of parameter/field name and fuzzing method
         pairs_name_method = {
             "ResponseCode": fuzz_response_code,
-            "PaymentOptionList": fuzz_payment_option_list,
-            "ChargeService": fuzz_charge_service,
-            "ServiceList": fuzz_service_list,
+            "DC_EVSEStatus": fuzz_dc_evse_status,
+            "EVSEPresentVoltage": fuzz_evse_present_voltage,
         }
         # Required fields define in the standard
-        required_fields = ["ResponseCode", "PaymentOptionList" "ChargeService"]
+        required_fields = [
+            "ResponseCode",
+            "DC_EVSEStatus",
+            "EVSEPresentVoltage",
+        ]
 
         # All possible fields (required/optional) define in the standard
         all_fields = list(pairs_name_method.keys())
 
         return general_msg_fuzzing_method(
-            required_fields=required_fields,
-            all_fields=all_fields,
             msg_config=self.msg_config,
             msg_fuzz_dict=self.msg_fuzz_dict,
             msg_default_dict=self.msg_default_dict,
             pairs_name_method=pairs_name_method,
-            class_name=self.__class__.__name__,
+            required_fields=required_fields,
+            all_fields=all_fields,
         )

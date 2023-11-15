@@ -53,15 +53,7 @@ class FuzzerChargingStatusRes:
         ]
 
         # All possible fields (required/optional) define in the standard
-        all_fields = [
-            "ResponseCode",
-            "EVSEID",
-            "SAScheduleTupleID",
-            "EVSEMaxCurrent",
-            "MeterInfo",
-            "ReceiptRequired",
-            "AC_EVSEStatus",
-        ]
+        all_fields = list(pairs_name_method.keys())
 
         # Call general method for fuzzing message
         return general_msg_fuzzing_method(

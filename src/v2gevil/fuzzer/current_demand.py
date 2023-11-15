@@ -22,7 +22,7 @@ from .fuzz_msg_general import general_msg_fuzzing_method
 
 
 class FuzzerCurrentDemandRes:
-    """Fuzzer class for Cable Check response message"""
+    """Fuzzer class for Current Demand response message"""
 
     def __init__(
         self,

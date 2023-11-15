@@ -47,7 +47,7 @@ class FuzzerChargeParameterDiscoveryRes:
         required_fields = ["ResponseCode", "EVSEProcessing"]
 
         # All possible fields (required/optional) define in the standard
-        all_fields = ["ResponseCode", "EVSEProcessing", "SAScheduleList"]
+        all_fields = list(pairs_name_method.keys())
 
         if self.charging_mode == EVSEChargingMode.AC:
             required_fields.append("AC_EVSEChargeParameter")

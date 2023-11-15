@@ -44,6 +44,7 @@ from .charging_status import FuzzerChargingStatusRes
 from .cable_check import FuzzerCableCheckRes
 from .pre_charge import FuzzerPreChargeRes
 from .current_demand import FuzzerCurrentDemandRes
+from .welding_detection import FuzzerWeldingDetectionRes
 
 logger = logging.getLogger(__name__)
 
@@ -833,44 +834,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
+        msg_fuzzer = FuzzerWeldingDetectionRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
-            # FUZZ DC_EVSEStatus
-            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-            dc_evse_status = fuzz_dc_evse_status(modes={})
-
-            # FUZZ EVSEPresentVoltage
-            # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
-            evse_present_voltage = fuzz_evse_present_voltage(modes={})
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            dc_evse_status = fuzz_dc_evse_status(
-                modes=msg_config["DC_EVSEStatus"],
-                valid_values=msg_default_dict["DC_EVSEStatus"],
-            )
-            evse_present_voltage = fuzz_evse_present_voltage(
-                modes=msg_config["EVSEPresentVoltage"],
-                valid_values=msg_default_dict["EVSEPresentVoltage"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
-        msg_dict_to_fuzz["EVSEPresentVoltage"] = evse_present_voltage
-
-        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        # Replace message in fuzzing_dict with fuzzed one
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     # DC messages END
 
