@@ -25,8 +25,6 @@ from .fuzzer_enums import EVFuzzMode, MessageName
 from .fuzz_params import (
     fuzz_response_code,
     fuzz_evse_id,
-    fuzz_evse_timestamp,
-    fuzz_gen_challenge,
     fuzz_evse_processing,
     fuzz_sa_schedule_list,
     fuzz_ac_evse_charge_parameter,
@@ -57,6 +55,7 @@ from .session_setup import FuzzerSessionSetupRes
 from .service_discovery import FuzzerServiceDiscoveryRes
 from .service_detail import FuzzerServiceDetailRes
 from .payment_service_selection import FuzzerPaymentServiceSelectionRes
+from .payment_details import FuzzerPaymentDetailsRes
 
 logger = logging.getLogger(__name__)
 
@@ -484,46 +483,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-            # FUZZ GenChallenge
-            # GenChallenge is type base64Binary (in xml schema), (length 16)
-            # represents Base64-encoded arbitrary binary data
-            # Allowed characters are A-Z, a-z, 0-9, +, /, =
-            gen_challenge = fuzz_gen_challenge(mode="random")
-            # FUZZ EVSETimeStamp
-            # EVSETimeStamp is type long (in xml schema)
-            # Format is “Unix Time Stamp”
-            evse_timestamp = fuzz_evse_timestamp(mode="random")
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            gen_challenge = fuzz_gen_challenge(
-                mode=msg_config["GenChallenge"],
-                valid_val=msg_default_dict["GenChallenge"],
-            )
-            evse_timestamp = fuzz_evse_timestamp(
-                mode=msg_config["EVSETimeStamp"],
-                valid_val=msg_default_dict["EVSETimeStamp"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["GenChallenge"] = gen_challenge
-        msg_dict_to_fuzz["EVSETimeStamp"] = evse_timestamp
+        msg_fuzzer = FuzzerPaymentDetailsRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_authorization_res(self, msg_config: Optional[dict] = None):
         """Fuzz authorizationRes message in fuzzing_dict
