@@ -25,6 +25,7 @@ from ..v2gtp.v2gtp_enums import (
     V2GTPProtocols,
     V2GTPAddress,
     V2GTPVersion,
+    V2GTPAppProtocols,
 )
 from ..messages import messages
 from ..messages.MsgBody import (
@@ -157,12 +158,7 @@ class V2GTPMessage:
         return None, None, None, None
 
     def parse_v2gtp_exi_msg(self):
-        """Parse V2GTP EXI message."""
-        # TODO: Implement this method
-        # Maybe implement here also EXI to XML conversion
-        # Then parsing as XML => find what kind of req was received
-        # Or maybe return class instance of req/res
-        # or just string of root element
+        """Parse V2GTP EXI message to get obj and obj_name."""
 
         # Get XML string from EXI payload
         xml_str = self.decode_v2gtp_exi_msg()
@@ -217,18 +213,18 @@ class V2GTPMessage:
         response_obj = None
 
         # Check what type of request was received => need to EXI decode
-        obj, req_obj_name = self.parse_v2gtp_exi_msg()
+        req_obj, req_obj_name = self.parse_v2gtp_exi_msg()
 
-        # Based on this mapping request-response, the responses are created
-        responses = messages_dict
-        if responses is None:
+        # Based on this mapping request-response, the req_res_map are created
+        req_res_map = messages_dict
+        if req_res_map is None:
             logger.warning("Responses dictionary is None!")
             raise ValueError("Responses dictionary is None!")
 
-        if isinstance(obj, V2G_Message):
+        if isinstance(req_obj, V2G_Message):
             if (
-                isinstance(obj.body, SessionSetupReq)
-                and obj.header.session_id == 0
+                isinstance(req_obj.body, SessionSetupReq)
+                and req_obj.header.session_id == 0
             ):
                 # SECC shall generate a new (not stored) SessionID, max. 8 bytes
                 # SessionID in hexBinary
@@ -236,28 +232,25 @@ class V2GTPMessage:
                 session_id = random.randbytes(8).hex()
 
             # Session id in response will be same as in req for all other requests
-            session_id = obj.header.session_id
+            session_id = req_obj.header.session_id
             # TODO VULN: add Notification and Signature in response and test it
             header_res = Header(SessionID=session_id)
 
-            # TODO: Implement some logic for req => res mapping => create V2G_Message instance
-            # TODO: implement to Req classes the method to return Response class/ name of response class
-            # TODO: Maybe create for obj method to create instance of response
-            # For now, just name of response class is returned
-            # Will be good if the file will contain dictionary to use model_validate to build instance of response
-            # To get an attribute of class, use getattr(obj, "attribute_name")
-
             # To get name of setted attribute in Body => get request/response class
             # Will be only one every time, so list()[0]
-            attribute_name_in_body = list(obj.body.model_fields_set)[0]
+            req_name = list(req_obj.body.model_fields_set)[0]
 
             # get attribute from body based on the name of attribute from previous step
-            attribute_instance = getattr(obj.body, attribute_name_in_body)
+            # type is some of the classes from MsgBody.py
+            req_instance = getattr(req_obj.body, req_name)
             # Just for verification type of attribute
             # print(type(attribute_instance))
             # get name of class for attribute - based on __str__() method in class
             # So to get the class name of attribute use __class__.__name__ or str(attribute)
-            body_type_res = str(attribute_instance)
+            # body_type_res = str(attribute_instance)
+
+            # Request class name, for example: 'SessionSetupReq', type is str
+            body_type_req = req_instance.__class__.__name__
             # print(body_type_res) is equal to print(attribute_instance)
 
             # Create instance of Body with proper response class
@@ -265,24 +258,34 @@ class V2GTPMessage:
             # for example: 'SessionSetupReq' =>
             #   {'SessionSetupRes': {'ResponseCode': 'OK', 'EVSEID': 'EVSE1'}}
             # TODO: Think what from this two lines is better
-            # body_res = Body(**responses[body_type_res]) -> this showing error in VSCode but it's working
+            # body_res = Body(**req_res_map[body_type_res]) -> this showing error in VSCode but it's working
             # the line below is without error in VSCode, also working in runtime
-            body_res = Body.model_validate(responses[body_type_res])
+            # req_res_map[body_type_req] => dict for response class
+            body_res = Body.model_validate(req_res_map[body_type_req])
 
             # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
             # also thi param is need to be check when model_dump, => model_dump(warnings=False)
 
             response_obj = V2G_Message(Header=header_res, Body=body_res)
 
-        if isinstance(obj, supportedAppProtocolReq):
-            for app_proto in obj.app_protocol:
-                # TODO: Use enum for NS
-                if app_proto.proto_ns == "urn:iso:15118:2:2013:MsgDef":
-                    # TODO VULN: test if EVCC will accept different schema id or response code
-                    response_obj = supportedAppProtocolRes(
-                        ResponseCode=responseCodeTypeAppProto.SUCCESS_NEGOTIATION,
-                        SchemaID=app_proto.schema_id,
-                    )
+        if isinstance(req_obj, supportedAppProtocolReq):
+            # Differ between runtime response and normal response
+            # if supportedAppProtocol is in req_res_map dictionary, then use it
+            # if not, then use normal response
+            if supportedAppProtocolReq.__name__ in req_res_map:
+                response_obj = Body.model_validate(
+                    req_res_map[supportedAppProtocolReq.__name__]
+                )
+            else:
+                for app_proto in req_obj.app_protocol:
+                    if (
+                        app_proto.proto_ns
+                        == V2GTPAppProtocols.PROTOCOL_NAMESPACE
+                    ):
+                        response_obj = supportedAppProtocolRes(
+                            ResponseCode=responseCodeTypeAppProto.SUCCESS_NEGOTIATION,
+                            SchemaID=app_proto.schema_id,
+                        )
 
         # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
         # also thi param is need to be check when model_dump, => model_dump(warnings=False)

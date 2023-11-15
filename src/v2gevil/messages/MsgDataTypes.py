@@ -101,7 +101,7 @@ class PhysicalValueType(BaseModel):
 
     # multiplier, xs:byte, minInclusive value="-3", maxInclusive value="3"
     multiplier: int = Field(..., alias="Multiplier")
-    # unit, xs:string
+    # unit, type unitSymbolType, xs:string
     unit: unitSymbolType = Field(..., alias="Unit")
     # value, xs:short
     value: int = Field(..., alias="Value")

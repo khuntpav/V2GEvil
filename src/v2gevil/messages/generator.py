@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Union, Optional
 import json
 
-from ..station.station_enums import EVSEDefaultDictPaths
-
 # V2G messages schemas
 from .AppProtocol import (
     supportedAppProtocolReq,
@@ -91,15 +89,6 @@ from ..station.station_enums import (
 
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_STATION_DICT_PATH = "default_dict.json"
-
-
-# msg_dict = {
-#     "supportedAppProtocolReq": "supportedAppProtocolRes",
-#     "SessionSetupReq": "SessionSetupRes",
-#     "ServiceDiscoveryReq": "ServiceDiscoveryRes",
-# }
 
 
 class EVSEMessageGenerator:
@@ -187,7 +176,7 @@ class EVSEMessageGenerator:
     def generate_default_dict_AC(self, override_flag: bool = False) -> dict:
         """Generate default dictionary for AC charging mode.
         
-        Generated dictionory is also saved to file\
+        Generated dictionary is also saved to file\
             if not exists or if override_flag is True.
                     
         Args:
