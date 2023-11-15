@@ -13,9 +13,7 @@
 
 import logging
 from typing import Optional
-from enum import Enum
 from pathlib import Path
-from functools import reduce
 import json
 import tomli
 from ..messages import generator
@@ -56,6 +54,7 @@ from .service_discovery import FuzzerServiceDiscoveryRes
 from .service_detail import FuzzerServiceDetailRes
 from .payment_service_selection import FuzzerPaymentServiceSelectionRes
 from .payment_details import FuzzerPaymentDetailsRes
+from .authorization import FuzzerAuthorizationRes
 
 logger = logging.getLogger(__name__)
 
@@ -507,31 +506,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            response_code = fuzz_response_code(mode="random")
-            evse_processing = fuzz_evse_processing(mode="random")
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            evse_processing = fuzz_evse_processing(
-                mode=msg_config["EVSEProcessing"],
-                valid_val=msg_default_dict["EVSEProcessing"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["EVSEProcessing"] = evse_processing
+        msg_fuzzer = FuzzerAuthorizationRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_charge_parameter_discovery_res(
         self, msg_config: Optional[dict] = None
