@@ -5,6 +5,7 @@ import logging
 
 from .fuzz_params import (
     fuzz_response_code,
+    fuzz_payment_option_list,
     fuzz_charge_service,
     fuzz_service_list,
 )
@@ -35,14 +36,20 @@ class FuzzerServiceDiscoveryRes:
         # Pairs of parameter/field name and fuzzing method
         pairs_name_method = {
             "ResponseCode": fuzz_response_code,
+            "PaymentOptionList": fuzz_payment_option_list,
             "ChargeService": fuzz_charge_service,
             "ServiceList": fuzz_service_list,
         }
         # Required fields define in the standard
-        required_fields = ["ResponseCode", "ChargeService"]
+        required_fields = ["ResponseCode", "PaymentOptionList" "ChargeService"]
 
         # All possible fields (required/optional) define in the standard
-        all_fields = ["ResponseCode", "ChargeService", "ServiceList"]
+        all_fields = [
+            "ResponseCode",
+            "PaymentOptionList",
+            "ChargeService",
+            "ServiceList",
+        ]
 
         return general_msg_fuzzing_method(
             required_fields=required_fields,

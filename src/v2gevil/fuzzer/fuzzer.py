@@ -26,9 +26,6 @@ from .fuzz_params import (
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_evse_timestamp,
-    fuzz_payment_option_list,
-    fuzz_charge_service,
-    fuzz_service_list,
     fuzz_service_id,
     fuzz_service_parameter_list,
     fuzz_gen_challenge,
@@ -59,6 +56,7 @@ from .fuzz_params import (
 )
 from .fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
 from .session_setup import FuzzerSessionSetupRes
+from .service_discovery import FuzzerServiceDiscoveryRes
 
 logger = logging.getLogger(__name__)
 
@@ -412,70 +410,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # Fuzz all parameters in message
-            # Valid values are generated in fuzz_methods
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-            # FUZZ PaymentOptionList
-            # PaymentOptionList is complexType (in xml schema): PaymentOptionListType
-            payment_option_list = fuzz_payment_option_list(modes={})
-            # FUZZ ChargeService
-            # ChargeService is complexType (in xml schema): ChargeServiceType
-            charge_service = fuzz_charge_service(modes={})
-            # FUZZ ServiceList
-            # ServiceList is complexType (in xml schema): ServiceListType
-            service_list = fuzz_service_list(modes={})
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            # TODO IMPORTANT IN ALL METHODS
-            # Check if all params are in config file
-            # for param in msg_default_dict.keys():
-            #    if param not in msg_config.keys():
-            #        if param is in msg_config["RequiredParams"]:
-            #            msg_config[param] = "valid"
-            #            msg_default_dict[param] = None
-            #        else:
-            #            msg_config[param] = None
-            #            msg_default_dict[param] = None
-
-            # I want if empty dict is passed to fuzzing method => random values
-            # if dict is passed with params => fuzz only those params
-            # if None is passed => valid values
-            # None or empty dict only for required params
-            # {}
-            # {"ResponseCode": "random", "ChargeService": {"ServiceID": "random"}}}
-
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            payment_option_list = fuzz_payment_option_list(
-                modes=msg_config["PaymentOptionList"],
-                valid_values=msg_default_dict["PaymentOptionList"],
-            )
-            charge_service = fuzz_charge_service(
-                modes=msg_config["ChargeService"],
-                valid_values=msg_default_dict["ChargeService"],
-            )
-            service_list = fuzz_service_list(
-                modes=msg_config["ServiceList"],
-                valid_values=msg_default_dict["ServiceList"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["PaymentOptionList"] = payment_option_list
-        msg_dict_to_fuzz["ChargeService"] = charge_service
-        msg_dict_to_fuzz["ServiceList"] = service_list
+        msg_fuzzer = FuzzerServiceDiscoveryRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_service_detail_res(self, msg_config: Optional[dict] = None):
         """Fuzz serviceDetailRes message in fuzzing_dict
