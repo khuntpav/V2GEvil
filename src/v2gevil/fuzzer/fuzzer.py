@@ -57,6 +57,7 @@ from .fuzz_params import (
 from .fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
 from .session_setup import FuzzerSessionSetupRes
 from .service_discovery import FuzzerServiceDiscoveryRes
+from .service_detail import FuzzerServiceDetailRes
 
 logger = logging.getLogger(__name__)
 
@@ -434,45 +435,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-            # FUZZ ServiceID
-            # ServiceID is type xs:unsignedShort (in xml schema) => 0-65535 (int in python)
-            service_id = fuzz_service_id(mode="random")
-            # FUZZ ServiceParameterList
-            # ServiceParameterList is complexType (in xml schema): ServiceParameterListType
-            # TODO: Solved modes {} for all methods with param modes=
-            # cause it's need to pass it as {"name1": "random", "name2": "random"}...
-            service_parameter_list = fuzz_service_parameter_list(modes={})
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            service_id = fuzz_service_id(
-                mode=msg_config["ServiceID"],
-                valid_val=msg_default_dict["ServiceID"],
-            )
-            service_parameter_list = fuzz_service_parameter_list(
-                modes=msg_config["ServiceParameterList"],
-                valid_values=msg_default_dict["ServiceParameterList"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["ServiceID"] = service_id
-        msg_dict_to_fuzz["ServiceParameterList"] = service_parameter_list
+        msg_fuzzer = FuzzerServiceDetailRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_payment_service_selection_res(
         self, msg_config: Optional[dict] = None
