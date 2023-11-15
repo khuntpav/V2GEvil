@@ -3,7 +3,11 @@
 from typing import Optional
 import logging
 
-from .fuzz_params import fuzz_response_code
+from .fuzz_params import (
+    fuzz_response_code,
+    fuzz_gen_challenge,
+    fuzz_evse_timestamp,
+)
 from .fuzz_msg_general import general_msg_fuzzing_method
 
 logger = logging.getLogger(__name__)
@@ -30,6 +34,8 @@ class FuzzerPaymentDetailsRes:
         # Pairs of parameter/field name and fuzzing method
         pairs_name_method = {
             "ResponseCode": fuzz_response_code,
+            "GenChallenge": fuzz_gen_challenge,
+            "EVSETimeStamp": fuzz_evse_timestamp,
         }
         # Required fields define in the standard
         required_fields = ["ResponseCode", "GenChallenge", "EVSETimeStamp"]
