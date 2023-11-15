@@ -23,7 +23,6 @@ from ..station.station_enums import EVSEChargingMode, EVSEDetails
 from ..station import station
 from .fuzzer_enums import EVFuzzMode, MessageName
 from .fuzz_params import (
-    fuzz_schema_id,
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_evse_timestamp,
@@ -58,7 +57,8 @@ from .fuzz_params import (
     fuzz_evse_maximum_current,
     fuzz_evse_maximum_power,
 )
-from fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
+from .fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
+from .session_setup import FuzzerSessionSetupRes
 
 logger = logging.getLogger(__name__)
 
@@ -350,10 +350,13 @@ class EVFuzzer:
         # => the name of Body attribute is the same as response name
         # but here i need to know only response dict => that's why [req_name][res_name]
 
-        # FuzzerSupportAppProtocolRes class
-        # FuzeerSupportAppProtocolRes.fuzz()
+        # MODE ALL - all parameters will be fuzzed - msg_config is None
+        # Config file is NOT used
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
 
-        # In dict working without .value
+        # In dict works without .value
         req_key = MessageName.SUPPORTED_APP_PROTOCOL_REQ
         res_key = MessageName.SUPPORTED_APP_PROTOCOL_RES
 
@@ -367,42 +370,8 @@ class EVFuzzer:
             msg_default_dict=msg_default_dict,
         )
 
-        # fuzzer = FuzzerSupportAppProtocolRes(msg_config=msg_config, msg_dict_to_fuzz=msg_dict_to_fuzz, msg_default_dict=msg_default_dict)
-
-        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
-
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # Fuzz all parameters in message
-            # Valid values are generated in fuzz_methods
-            schema_id = fuzz_schema_id(mode="random")
-            response_code = fuzz_response_code(mode="random")
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            # Fuzz SchemaID
-            # SchemaID is type unsigneByte (in xml schema) => 0-255 (int in python)
-            schema_id = fuzz_schema_id(
-                mode=msg_config["SchemaID"],
-                valid_val=msg_default_dict["SchemaID"],
-            )
-
-            # Fuzz ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_fuzz_dict["SchemaID"] = schema_id
-        msg_fuzz_dict["ResponseCode"] = response_code
-
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_fuzz_dict
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_session_setup_res(self, msg_config: Optional[dict] = None):
         """Fuzz sessionSetupRes message in fuzzing_dict
@@ -419,64 +388,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # Fuzz all parameters in message
-            # Valid values are generated in fuzz_methods
-            response_code = fuzz_response_code(mode="random")
-            evse_id = fuzz_evse_id(mode="random")
-            evse_timestamp = fuzz_evse_timestamp(mode="random")
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            # TODO: In this case msg_config can be {}
-            # or {"ResponseCode": "random"}
-            # or {"ResponseCode": "random", "EVSEID": "random"}
-            # SO i have to check if key is in dict and if dict is empty then fuzz all randomly
-            # if they are required params for this message, in toml it's array
-            # msg_config['RequiredParams'] = ["ResponseCode", "EVSEID"]
-            # it will be nested if param is complextype and it contains dict not onl
-            # MAybe think about to have
-            # ResponseCode
-            #       mode: "random"
-            #       valid_values: ["Accepted", "Rejected"]
-            #       required: True
-            # Everytime it will be atr_conf
-            # and for every atr_conf["mode"], atr_conf["valid_values"], atr_conf["required"]
-
-            # Fuzz ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-
-            # Fuzz EVSEID
-            # EVSEID is type string (in xml schema), (min length: 7, max length:37)
-            # If an SECC cannot provide such ID data,
-            # the value of the EVSEID is set to zero ("ZZ00000").
-            evse_id = fuzz_evse_id(
-                mode=msg_config["EVSEID"], valid_val=msg_default_dict["EVSEID"]
-            )
-
-            # Fuzz EVSETimeStamp
-            # EVSETimeStamp is type long (in xml schema)
-            # Format is “Unix Time Stamp”
-            # Optional parameter
-            evse_timestamp = fuzz_evse_timestamp(
-                mode=msg_config["EVSETimeStamp"],
-                valid_val=msg_default_dict["EVSETimeStamp"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["EVSEID"] = evse_id
-        msg_dict_to_fuzz["EVSETimeStamp"] = evse_timestamp
+        msg_fuzzer = FuzzerSessionSetupRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_service_discovery_res(self, msg_config: Optional[dict] = None):
         """Fuzz serviceDiscoveryRes message in fuzzing_dict
