@@ -24,9 +24,6 @@ from .fuzz_params import (
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_evse_processing,
-    fuzz_sa_schedule_list,
-    fuzz_ac_evse_charge_parameter,
-    fuzz_dc_evse_charge_parameter,
     fuzz_ac_evse_status,
     fuzz_dc_evse_status,
     fuzz_sa_provisioning_certificate_chain,
@@ -56,6 +53,7 @@ from .payment_service_selection import FuzzerPaymentServiceSelectionRes
 from .payment_details import FuzzerPaymentDetailsRes
 from .authorization import FuzzerAuthorizationRes
 from .charge_parameter_discovery import FuzzerChargeParameterDiscoveryRes
+from .power_delivery import FuzzerPowerDeliveryRes
 
 logger = logging.getLogger(__name__)
 
@@ -562,71 +560,15 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-
-        # TODO: IMPORTANT
-        # TODO: Add some check if in modes for that messages
-        # param is not in modes and also not in required
-        # it will not include it
-        # if not in modes but in required it will be fuzzed (with valid value)
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-
-            if self.charging_mode == EVSEChargingMode.AC:
-                # FUZZ AC_EVSEStatus
-                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-                ac_evse_status = fuzz_ac_evse_status(modes={})
-            elif self.charging_mode == EVSEChargingMode.DC:
-                # FUZZ DC_EVSEStatus
-                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-                dc_evse_status = fuzz_dc_evse_status(modes={})
-            else:
-                # Should never happen
-                logger.error("Invalid charging mode: %s", self.charging_mode)
-                raise ValueError(
-                    f"Invalid charging mode: {self.charging_mode}"
-                )
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-
-            if self.charging_mode == EVSEChargingMode.AC:
-                # FUZZ AC_EVSEStatus
-                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-                ac_evse_status = fuzz_ac_evse_status(
-                    modes=msg_config["AC_EVSEStatus"],
-                    valid_values=msg_default_dict["AC_EVSEStatus"],
-                )
-            elif self.charging_mode == EVSEChargingMode.DC:
-                # FUZZ DC_EVSEStatus
-                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-                dc_evse_status = fuzz_dc_evse_status(
-                    modes=msg_config["DC_EVSEStatus"],
-                    valid_values=msg_default_dict["DC_EVSEStatus"],
-                )
-            else:
-                # Should never happen
-                logger.error("Invalid charging mode: %s", self.charging_mode)
-                raise ValueError(
-                    f"Invalid charging mode: {self.charging_mode}"
-                )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        # DC_EVSEStatus or AC_EVSEStatus is added to dict_to_fuzz based on charging mode
-        # it's above in if/elif/else
+        msg_fuzzer = FuzzerPowerDeliveryRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+            charging_mode=self.charging_mode,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_certificate_update_res(self, msg_config: Optional[dict] = None):
         """Fuzz certificateUpdateRes message in fuzzing_dict
