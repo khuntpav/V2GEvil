@@ -409,10 +409,10 @@ def load_custom_dict_from_file(filename: str) -> dict:
 
 def start_async(
     interface: str = EVSEDetails.INTERFACE.value,
-    accept_security: bool = False,
+    accept_security: bool = True,
     charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
     ev_enumerator: Optional[EVEnumerator] = None,
-    custom_dict: Optional[dict] = None,
+    req_res_map: Optional[dict] = None,
 ):
     """Start station.
 
@@ -424,7 +424,7 @@ def start_async(
         accept_security=accept_security,
         charging_mode=charging_mode,
         ev_enumerator=ev_enumerator,
-        messages_mapping_dict=custom_dict,
+        messages_mapping_dict=req_res_map,
     )
     asyncio.run(manager.start())
 

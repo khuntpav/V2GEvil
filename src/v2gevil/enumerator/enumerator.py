@@ -116,7 +116,6 @@ class EVEnumerator:
 class EVSEEnumerator:
     """EVSE enumerator class."""
 
-    raise NotImplementedError
-
     def enumerate_supported_proto(self):
         """Enumerate supported protocols."""
+        raise NotImplementedError

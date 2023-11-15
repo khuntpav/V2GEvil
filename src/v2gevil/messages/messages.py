@@ -166,6 +166,9 @@ def testing_xml2class_instance():
     print(type(attribute))
     print("Printing attribute")
     print(attribute)
+    print("Class name of attribute")
+    print(attribute.__class__.__name__)
+    print(type(attribute.__class__.__name__))
 
     a = Body(**body_dump)
     print("Printing a")

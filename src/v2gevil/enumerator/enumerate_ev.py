@@ -30,8 +30,9 @@ def enumerate_ev(
 
     ev_enumerator = EVEnumerator()
 
-    # TODO: problem with user input will be a string
-    # and match case will not work, enum works only for ==, because it use .value
+    # Problem with user input will be a string in modules_tools.py
+    # and that's why there is a conversion to enum
+    # So here i can use enum directly instead of enum.value
     # Choose which enumeration mode to use
     match enum_mode:
         case None:
