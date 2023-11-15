@@ -24,7 +24,6 @@ from .fuzz_params import (
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_evse_processing,
-    fuzz_ac_evse_status,
     fuzz_dc_evse_status,
     fuzz_sa_provisioning_certificate_chain,
     fuzz_contract_signature_cert_chain,
@@ -33,7 +32,6 @@ from .fuzz_params import (
     fuzz_emaid,
     fuzz_retry_counter,
     fuzz_sa_schedule_tuple_id,
-    fuzz_evse_max_current,
     fuzz_meter_info,
     fuzz_receipt_required,
     fuzz_evse_present_voltage,
@@ -56,6 +54,7 @@ from .charge_parameter_discovery import FuzzerChargeParameterDiscoveryRes
 from .power_delivery import FuzzerPowerDeliveryRes
 from .session_stop import FuzzerSessionStopRes
 from .metering_receipt import FuzzerMeteringReceiptRes
+from .charging_status import FuzzerChargingStatusRes
 
 logger = logging.getLogger(__name__)
 
@@ -740,75 +739,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            response_code = fuzz_response_code(mode="random")
-            # EVSEID is type string (in xml schema), (min length: 7, max length:37)
-            evse_id = fuzz_evse_id(mode="random")
-            # FUZZ SAScheduleTupleID
-            # SAScheduleTupleID is short (in some other message is unsignedByte)
-            # => place for mistake in some implementation of this standard
-            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(mode="random")
-            # FUZZ EVSEMaxCurrent
-            # EVSEMaxCurrent is complexType (in xml schema): PhysicalValueType
-            # Optional parameter
-            evse_max_current = fuzz_evse_max_current(modes={})
-            # FUZZ MeterInfo
-            # MeterInfo is complexType (in xml schema): MeterInfoType
-            # Optional parameter
-            meter_info = fuzz_meter_info(modes={})
-            # FUZZ ReceiptRequired
-            # ReceiptRequired is boolean type (in xml schema)
-            # Optional parameter
-            receipt_required = fuzz_receipt_required(mode="random")
-            # FUZZ AC_EVSEStatus
-            # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-            ac_evse_status = fuzz_ac_evse_status(modes={})
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            evse_id = fuzz_evse_id(
-                mode=msg_config["EVSEID"],
-                val_type=msg_config["EVSEID"],
-                valid_val=msg_default_dict["EVSEID"],
-            )
-            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(
-                mode=msg_config["SAScheduleTupleID"],
-                valid_val=msg_default_dict["SAScheduleTupleID"],
-            )
-            evse_max_current = fuzz_evse_max_current(
-                modes=msg_config["EVSEMaxCurrent"],
-                valid_values=msg_default_dict["EVSEMaxCurrent"],
-            )
-            meter_info = fuzz_meter_info(
-                modes=msg_config["MeterInfo"],
-                valid_values=msg_default_dict["MeterInfo"],
-            )
-            receipt_required = fuzz_receipt_required(
-                mode=msg_config["ReceiptRequired"]
-            )
-            ac_evse_status = fuzz_ac_evse_status(
-                modes=msg_config["AC_EVSEStatus"],
-                valid_values=msg_default_dict["AC_EVSEStatus"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["EVSEID"] = evse_id
-        msg_dict_to_fuzz["SAScheduleTupleID"] = sa_schedule_tuple_id
-        msg_dict_to_fuzz["EVSEMaxCurrent"] = evse_max_current
-        msg_dict_to_fuzz["MeterInfo"] = meter_info
-        msg_dict_to_fuzz["ReceiptRequired"] = receipt_required
-        msg_dict_to_fuzz["AC_EVSEStatus"] = ac_evse_status
+        msg_fuzzer = FuzzerChargingStatusRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     # AC messages END
     # DC messages START
