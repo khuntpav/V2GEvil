@@ -22,26 +22,12 @@ from ..station import station
 from .fuzzer_enums import EVFuzzMode, MessageName
 from .fuzz_params import (
     fuzz_response_code,
-    fuzz_evse_id,
-    fuzz_evse_processing,
-    fuzz_dc_evse_status,
     fuzz_sa_provisioning_certificate_chain,
     fuzz_contract_signature_cert_chain,
     fuzz_contract_signature_encrypted_private_key,
     fuzz_dh_public_key,
     fuzz_emaid,
     fuzz_retry_counter,
-    fuzz_sa_schedule_tuple_id,
-    fuzz_meter_info,
-    fuzz_receipt_required,
-    fuzz_evse_present_voltage,
-    fuzz_evse_present_current,
-    fuzz_evse_current_limit_achieved,
-    fuzz_evse_voltage_limit_achieved,
-    fuzz_evse_power_limit_achieved,
-    fuzz_evse_maximum_voltage,
-    fuzz_evse_maximum_current,
-    fuzz_evse_maximum_power,
 )
 from .fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
 from .session_setup import FuzzerSessionSetupRes
@@ -57,6 +43,7 @@ from .metering_receipt import FuzzerMeteringReceiptRes
 from .charging_status import FuzzerChargingStatusRes
 from .cable_check import FuzzerCableCheckRes
 from .pre_charge import FuzzerPreChargeRes
+from .current_demand import FuzzerCurrentDemandRes
 
 logger = logging.getLogger(__name__)
 
@@ -821,149 +808,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-            # FUZZ DC_EVSEStatus
-            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-            dc_evse_status = fuzz_dc_evse_status(modes={})
-            # FUZZ EVSEPresentVoltage
-            # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
-            evse_present_voltage = fuzz_evse_present_voltage(modes={})
-            # FUZZ EVSEPresentCurrent
-            # EVSEPresentCurrent is complexType (in xml schema): PhysicalValueType
-            evse_present_current = fuzz_evse_present_current(modes={})
-            # FUZZ EVSECurrentLimitAchieved
-            # EVSECurrentLimitAchieved is boolean type (in xml schema)
-            evse_current_limit_achieved = fuzz_evse_current_limit_achieved(
-                mode="random"
-            )
-            # FUZZ EVSEVoltageLimitAchieved
-            # EVSEVoltageLimitAchieved is boolean type (in xml schema)
-            evse_voltage_limit_achieved = fuzz_evse_voltage_limit_achieved(
-                mode="random"
-            )
-            # FUZZ EVSEPowerLimitAchieved
-            # EVSEPowerLimitAchieved is boolean type (in xml schema)
-            evse_power_limit_achieved = fuzz_evse_power_limit_achieved(
-                mode="random"
-            )
-            # FUZZ EVSEMaximumVoltage
-            # EVSEMaximumVoltage is complexType (in xml schema): PhysicalValueType
-            # Optional parameter
-            evse_maximum_voltage = fuzz_evse_maximum_voltage(modes={})
-            # FUZZ EVSEMaximumCurrent
-            # EVSEMaximumCurrent is complexType (in xml schema): PhysicalValueType
-            # Optional parameter
-            evse_maximum_current = fuzz_evse_maximum_current(modes={})
-            # FUZZ EVSEMaximumPower
-            # EVSEMaximumPower is complexType (in xml schema): PhysicalValueType
-            # Optional parameter
-            evse_maximum_power = fuzz_evse_maximum_power(modes={})
-            # FUZZ EVSEID
-            # EVSEID is type string (in xml schema), (min length: 7, max length:37)
-            # In standard for this message type is: hexBinary max length 32
-            # another mistake in standard (previous were string max length 37)
-            # every EVSEID defined as simpleType: evseIDType - in schema is string
-            # inconsistency in standard
-            # If an SECC cannot provide such ID data,
-            # the value of the EVSEID is set to zero (00hex).
-            evse_id = fuzz_evse_id(mode="random")
-            # FUZZ SAScheduleTupleID
-            # SAScheduleTupleID is short (in some other message is unsignedByte)
-            # => place for mistake in some implementation of this standard
-            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(mode="random")
-            # FUZZ MeterInfo
-            # MeterInfo is complexType (in xml schema): MeterInfoType
-            # Optional parameter
-            meter_info = fuzz_meter_info(modes={})
-            # FUZZ ReceiptRequired
-            # ReceiptRequired is boolean type (in xml schema)
-            # Optional parameter
-            receipt_required = fuzz_receipt_required(mode="random")
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            dc_evse_status = fuzz_dc_evse_status(
-                modes=msg_config["DC_EVSEStatus"],
-                valid_values=msg_default_dict["DC_EVSEStatus"],
-            )
-            evse_present_voltage = fuzz_evse_present_voltage(
-                modes=msg_config["EVSEPresentVoltage"],
-                valid_values=msg_default_dict["EVSEPresentVoltage"],
-            )
-            evse_present_current = fuzz_evse_present_current(
-                modes=msg_config["EVSEPresentCurrent"],
-                valid_values=msg_default_dict["EVSEPresentCurrent"],
-            )
-            evse_current_limit_achieved = fuzz_evse_current_limit_achieved(
-                mode=msg_config["EVSECurrentLimitAchieved"]
-            )
-            evse_voltage_limit_achieved = fuzz_evse_voltage_limit_achieved(
-                mode=msg_config["EVSEVoltageLimitAchieved"]
-            )
-            evse_power_limit_achieved = fuzz_evse_power_limit_achieved(
-                mode=msg_config["EVSEPowerLimitAchieved"]
-            )
-            evse_maximum_voltage = fuzz_evse_maximum_voltage(
-                modes=msg_config["EVSEMaximumVoltage"],
-                valid_values=msg_default_dict["EVSEMaximumVoltage"],
-            )
-            evse_maximum_current = fuzz_evse_maximum_current(
-                modes=msg_config["EVSEMaximumCurrent"],
-                valid_values=msg_default_dict["EVSEMaximumCurrent"],
-            )
-            evse_maximum_power = fuzz_evse_maximum_power(
-                modes=msg_config["EVSEMaximumPower"],
-                valid_values=msg_default_dict["EVSEMaximumPower"],
-            )
-            evse_id = fuzz_evse_id(
-                mode=msg_config["EVSEID"],
-                val_type=msg_config["EVSEID"],
-                valid_val=msg_default_dict["EVSEID"],
-            )
-            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(
-                mode=msg_config["SAScheduleTupleID"],
-                valid_val=msg_default_dict["SAScheduleTupleID"],
-            )
-            meter_info = fuzz_meter_info(
-                modes=msg_config["MeterInfo"],
-                valid_values=msg_default_dict["MeterInfo"],
-            )
-            receipt_required = fuzz_receipt_required(
-                mode=msg_config["ReceiptRequired"]
-            )
+        msg_fuzzer = FuzzerCurrentDemandRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
-        msg_dict_to_fuzz["EVSEPresentVoltage"] = evse_present_voltage
-        msg_dict_to_fuzz["EVSEPresentCurrent"] = evse_present_current
-        msg_dict_to_fuzz[
-            "EVSECurrentLimitAchieved"
-        ] = evse_current_limit_achieved
-        msg_dict_to_fuzz[
-            "EVSEVoltageLimitAchieved"
-        ] = evse_voltage_limit_achieved
-        msg_dict_to_fuzz["EVSEPowerLimitAchieved"] = evse_power_limit_achieved
-        msg_dict_to_fuzz["EVSEMaximumVoltage"] = evse_maximum_voltage
-        msg_dict_to_fuzz["EVSEMaximumCurrent"] = evse_maximum_current
-        msg_dict_to_fuzz["EVSEMaximumPower"] = evse_maximum_power
-        msg_dict_to_fuzz["EVSEID"] = evse_id
-        msg_dict_to_fuzz["SAScheduleTupleID"] = sa_schedule_tuple_id
-        msg_dict_to_fuzz["MeterInfo"] = meter_info
-        msg_dict_to_fuzz["ReceiptRequired"] = receipt_required
-
-        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        # Replace message in fuzzing_dict with fuzzed one
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_welding_detection_res(self, msg_config: Optional[dict] = None):
         """Fuzz weldingDetectionRes message in fuzzing_dict
