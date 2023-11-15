@@ -68,3 +68,10 @@ class V2GTPAddress(str, Enum):
     MULTICAST_ADDRESS = "ff02::1"
     STATION = "fe80::d237:45ff:fe88:b12b"
     CAR = "fe80::d237:45ff:fe88:b12a"
+
+
+class V2GTPAppProtocols(str, Enum):
+    """Enum for V2GTP application protocols."""
+
+    PROTOCOL_NAMESPACE = "urn:iso:15118:2:2013:MsgDef"
+    # Others can be added based on the use case
