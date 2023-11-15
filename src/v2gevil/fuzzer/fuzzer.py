@@ -55,6 +55,7 @@ from .service_detail import FuzzerServiceDetailRes
 from .payment_service_selection import FuzzerPaymentServiceSelectionRes
 from .payment_details import FuzzerPaymentDetailsRes
 from .authorization import FuzzerAuthorizationRes
+from .charge_parameter_discovery import FuzzerChargeParameterDiscoveryRes
 
 logger = logging.getLogger(__name__)
 
@@ -534,99 +535,15 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-
-        # TODO: IMPORTANT
-        # TODO: Add some check if in modes for that messages
-        # param is not in modes and also not in required
-        # it will not include it
-        # if not in modes but in required it will be fuzzed (with valid value)
-        if msg_config is None:
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-            # FUZZ EVSEProcessing
-            # EVSEProcessing is enum type (in xml schema)
-            evse_processing = fuzz_evse_processing(mode="random")
-            # FUZZ SAScheduleList
-            # SAScheduleList is complexType (in xml schema): SAScheduleListType
-            sa_schedule_list = fuzz_sa_schedule_list(modes={})
-            if self.charging_mode == EVSEChargingMode.AC:
-                # FUZZ AC_EVSEChargeParameter
-                # AC_EVSEChargeParameter is complexType (in xml schema): AC_EVSEChargeParameterType
-                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter(
-                    modes={}
-                )
-                msg_dict_to_fuzz[
-                    "AC_EVSEChargeParameter"
-                ] = ac_evse_charge_parameter
-            elif self.charging_mode == EVSEChargingMode.DC:
-                # FUZZ DC_EVSEChargeParameter
-                # DC_EVSEChargeParameter is complexType (in xml schema): DC_EVSEChargeParameterType
-                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter(
-                    modes={}
-                )
-                msg_dict_to_fuzz[
-                    "DC_EVSEChargeParameter"
-                ] = dc_evse_charge_parameter
-            else:
-                # Should never happen
-                logger.error("Invalid charging mode: %s", self.charging_mode)
-                raise ValueError(
-                    f"Invalid charging mode: {self.charging_mode}"
-                )
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            evse_processing = fuzz_evse_processing(
-                mode=msg_config["EVSEProcessing"],
-                valid_val=msg_default_dict["EVSEProcessing"],
-            )
-            sa_schedule_list = fuzz_sa_schedule_list(
-                modes=msg_config["SAScheduleList"],
-                valid_values=msg_default_dict["SAScheduleList"],
-            )
-            if self.charging_mode == EVSEChargingMode.AC:
-                # FUZZ AC_EVSEChargeParameter
-                # AC_EVSEChargeParameter is complexType (in xml schema): AC_EVSEChargeParameterType
-                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter(
-                    modes=msg_config["AC_EVSEChargeParameter"],
-                    valid_values=msg_default_dict["AC_EVSEChargeParameter"],
-                )
-                msg_dict_to_fuzz[
-                    "AC_EVSEChargeParameter"
-                ] = ac_evse_charge_parameter
-            elif self.charging_mode == EVSEChargingMode.DC:
-                # FUZZ DC_EVSEChargeParameter
-                # DC_EVSEChargeParameter is complexType (in xml schema): DC_EVSEChargeParameterType
-                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter(
-                    modes=msg_config["DC_EVSEChargeParameter"],
-                    valid_values=msg_default_dict["DC_EVSEChargeParameter"],
-                )
-                msg_dict_to_fuzz[
-                    "DC_EVSEChargeParameter"
-                ] = dc_evse_charge_parameter
-            else:
-                # Should never happen
-                logger.error("Invalid charging mode: %s", self.charging_mode)
-                raise ValueError(
-                    f"Invalid charging mode: {self.charging_mode}"
-                )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["EVSEProcessing"] = evse_processing
-        msg_dict_to_fuzz["SAScheduleList"] = sa_schedule_list
+        msg_fuzzer = FuzzerChargeParameterDiscoveryRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+            charging_mode=self.charging_mode,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_power_delivery_res(self, msg_config: Optional[dict] = None):
         """Fuzz powerDeliveryRes message in fuzzing_dict
