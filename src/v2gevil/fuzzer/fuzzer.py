@@ -55,6 +55,7 @@ from .power_delivery import FuzzerPowerDeliveryRes
 from .session_stop import FuzzerSessionStopRes
 from .metering_receipt import FuzzerMeteringReceiptRes
 from .charging_status import FuzzerChargingStatusRes
+from .cable_check import FuzzerCableCheckRes
 
 logger = logging.getLogger(__name__)
 
@@ -766,44 +767,13 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            # FUZZ EVSEProcessing
-            # EVSEProcessing is enum type (in xml schema)
-            evse_processing = fuzz_evse_processing(mode="random")
-
-            # FUZZ ResponseCode
-            # ResponseCode is enum type (in xml schema)
-            response_code = fuzz_response_code(mode="random")
-
-            # FUZZ DC_EVSEStatus
-            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-            dc_evse_status = fuzz_dc_evse_status(modes={})
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            evse_processing = fuzz_evse_processing(
-                mode=msg_config["EVSEProcessing"],
-                valid_val=msg_default_dict["EVSEProcessing"],
-            )
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-            dc_evse_status = fuzz_dc_evse_status(
-                modes=msg_config["DC_EVSEStatus"],
-                valid_values=msg_default_dict["DC_EVSEStatus"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["EVSEProcessing"] = evse_processing
-        msg_dict_to_fuzz["ResponseCode"] = response_code
-        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
-
+        msg_fuzzer = FuzzerCableCheckRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_pre_charge_res(self, msg_config: Optional[dict] = None):
         """Fuzz preChargeRes message in fuzzing_dict
