@@ -26,8 +26,6 @@ from .fuzz_params import (
     fuzz_response_code,
     fuzz_evse_id,
     fuzz_evse_timestamp,
-    fuzz_service_id,
-    fuzz_service_parameter_list,
     fuzz_gen_challenge,
     fuzz_evse_processing,
     fuzz_sa_schedule_list,
@@ -58,6 +56,7 @@ from .fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
 from .session_setup import FuzzerSessionSetupRes
 from .service_discovery import FuzzerServiceDiscoveryRes
 from .service_detail import FuzzerServiceDetailRes
+from .payment_service_selection import FuzzerPaymentServiceSelectionRes
 
 logger = logging.getLogger(__name__)
 
@@ -461,25 +460,14 @@ class EVFuzzer:
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
 
-        # MODE ALL - all parameters will be fuzzed
-        # Config file is NOT used
-        if msg_config is None:
-            response_code = fuzz_response_code(mode="random")
-
-        # msg_config is not None for modes: MESSAGE, CONFIG
-        # Mode MESSAGE - fuzz only one message params specified in config file
-        # Mode CONFIG - fuzz all messages and params specified in config file
-        else:
-            response_code = fuzz_response_code(
-                mode=msg_config["ResponseCode"],
-                valid_val=msg_default_dict["ResponseCode"],
-            )
-
-        # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_fuzzer = FuzzerPaymentServiceSelectionRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_dict_to_fuzz,
+            msg_default_dict=msg_default_dict,
+        )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
     def fuzz_payment_details_res(self, msg_config: Optional[dict] = None):
         """Fuzz paymentDetailRes message in fuzzing_dict
