@@ -1,5 +1,16 @@
 """Module for fuzzing different values in the EVSE response messages."""
 
+
+# TODO: IF user wants runtime generation of messages,
+# that messages cannot be in default/fuzzing dict
+# have to be remove for dict[req][res]
+# this have to be based on config file and mode
+# If mode is runtime then it will assing to dict None
+# and here will be if None then pop [req][res] from dict
+
+# TODO: Maybe also add to config value = ..., which will override
+# the value which is taken from default/fuzzing dict
+
 import logging
 from typing import Optional
 from enum import Enum
@@ -47,6 +58,7 @@ from .fuzz_params import (
     fuzz_evse_maximum_current,
     fuzz_evse_maximum_power,
 )
+from fuzzer_supported_app_protocol import FuzzerSupportedAppProtocolRes
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +106,7 @@ class EVFuzzer:
         self.config_filename = config_filename
 
     # TODO: think about what to fuzz, like what to add to the fuzzing_dict
-    def fuzz(self, message_name: str = "", params: Optional[list] = None):
+    def fuzz(self, message_name: str = ""):
         """Fuzz EVSE response messages."""
         # Check which fuzzing mode is selected
         # and call appropriate method
@@ -218,6 +230,16 @@ class EVFuzzer:
         with open(self.config_filename, "rb") as config_file:
             config_data = tomli.load(config_file)
 
+        # Check if message name is in config file
+        if message_name not in config_data.keys():
+            logger.error(
+                "Message name: %s is not in fuzzer config file.", message_name
+            )
+            logger.error("Fuzzer config file: %s", self.config_filename)
+            raise ValueError(
+                f"Message name: {message_name} is not in fuzzer config file"
+            )
+
         # Pick only config for specified message
         msg_config = config_data[message_name]
 
@@ -328,13 +350,26 @@ class EVFuzzer:
         # => the name of Body attribute is the same as response name
         # but here i need to know only response dict => that's why [req_name][res_name]
 
+        # FuzzerSupportAppProtocolRes class
+        # FuzeerSupportAppProtocolRes.fuzz()
+
         # In dict working without .value
         req_key = MessageName.SUPPORTED_APP_PROTOCOL_REQ
         res_key = MessageName.SUPPORTED_APP_PROTOCOL_RES
 
-        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_fuzz_dict = self.fuzzing_dict[req_key][res_key]
         # Keep default values for all params in the message
         msg_default_dict = self.default_dict[req_key][res_key]
+
+        msg_fuzzer = FuzzerSupportedAppProtocolRes(
+            msg_config=msg_config,
+            msg_fuzz_dict=msg_fuzz_dict,
+            msg_default_dict=msg_default_dict,
+        )
+
+        # fuzzer = FuzzerSupportAppProtocolRes(msg_config=msg_config, msg_dict_to_fuzz=msg_dict_to_fuzz, msg_default_dict=msg_default_dict)
+
+        self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
         # MODE ALL - all parameters will be fuzzed
         # Config file is NOT used
@@ -363,11 +398,11 @@ class EVFuzzer:
             )
 
         # Change values in dict_to_fuzz
-        msg_dict_to_fuzz["SchemaID"] = schema_id
-        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_fuzz_dict["SchemaID"] = schema_id
+        msg_fuzz_dict["ResponseCode"] = response_code
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
-        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
+        self.fuzzing_dict[req_key][res_key] = msg_fuzz_dict
 
     def fuzz_session_setup_res(self, msg_config: Optional[dict] = None):
         """Fuzz sessionSetupRes message in fuzzing_dict
@@ -396,6 +431,21 @@ class EVFuzzer:
         # Mode MESSAGE - fuzz only one message params specified in config file
         # Mode CONFIG - fuzz all messages and params specified in config file
         else:
+            # TODO: In this case msg_config can be {}
+            # or {"ResponseCode": "random"}
+            # or {"ResponseCode": "random", "EVSEID": "random"}
+            # SO i have to check if key is in dict and if dict is empty then fuzz all randomly
+            # if they are required params for this message, in toml it's array
+            # msg_config['RequiredParams'] = ["ResponseCode", "EVSEID"]
+            # it will be nested if param is complextype and it contains dict not onl
+            # MAybe think about to have
+            # ResponseCode
+            #       mode: "random"
+            #       valid_values: ["Accepted", "Rejected"]
+            #       required: True
+            # Everytime it will be atr_conf
+            # and for every atr_conf["mode"], atr_conf["valid_values"], atr_conf["required"]
+
             # Fuzz ResponseCode
             # ResponseCode is enum type (in xml schema)
             response_code = fuzz_response_code(
@@ -459,11 +509,29 @@ class EVFuzzer:
             charge_service = fuzz_charge_service(modes={})
             # FUZZ ServiceList
             # ServiceList is complexType (in xml schema): ServiceListType
-            service_list = fuzz_service_list(modes=None)
+            service_list = fuzz_service_list(modes={})
         # msg_config is not None for modes: MESSAGE, CONFIG
         # Mode MESSAGE - fuzz only one message params specified in config file
         # Mode CONFIG - fuzz all messages and params specified in config file
         else:
+            # TODO IMPORTANT IN ALL METHODS
+            # Check if all params are in config file
+            # for param in msg_default_dict.keys():
+            #    if param not in msg_config.keys():
+            #        if param is in msg_config["RequiredParams"]:
+            #            msg_config[param] = "valid"
+            #            msg_default_dict[param] = None
+            #        else:
+            #            msg_config[param] = None
+            #            msg_default_dict[param] = None
+
+            # I want if empty dict is passed to fuzzing method => random values
+            # if dict is passed with params => fuzz only those params
+            # if None is passed => valid values
+            # None or empty dict only for required params
+            # {}
+            # {"ResponseCode": "random", "ChargeService": {"ServiceID": "random"}}}
+
             response_code = fuzz_response_code(
                 mode=msg_config["ResponseCode"],
                 valid_val=msg_default_dict["ResponseCode"],
@@ -719,14 +787,18 @@ class EVFuzzer:
             if self.charging_mode == EVSEChargingMode.AC:
                 # FUZZ AC_EVSEChargeParameter
                 # AC_EVSEChargeParameter is complexType (in xml schema): AC_EVSEChargeParameterType
-                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter()
+                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter(
+                    modes={}
+                )
                 msg_dict_to_fuzz[
                     "AC_EVSEChargeParameter"
                 ] = ac_evse_charge_parameter
             elif self.charging_mode == EVSEChargingMode.DC:
                 # FUZZ DC_EVSEChargeParameter
                 # DC_EVSEChargeParameter is complexType (in xml schema): DC_EVSEChargeParameterType
-                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter()
+                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter(
+                    modes={}
+                )
                 msg_dict_to_fuzz[
                     "DC_EVSEChargeParameter"
                 ] = dc_evse_charge_parameter
@@ -756,14 +828,20 @@ class EVFuzzer:
             if self.charging_mode == EVSEChargingMode.AC:
                 # FUZZ AC_EVSEChargeParameter
                 # AC_EVSEChargeParameter is complexType (in xml schema): AC_EVSEChargeParameterType
-                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter()
+                ac_evse_charge_parameter = fuzz_ac_evse_charge_parameter(
+                    modes=msg_config["AC_EVSEChargeParameter"],
+                    valid_values=msg_default_dict["AC_EVSEChargeParameter"],
+                )
                 msg_dict_to_fuzz[
                     "AC_EVSEChargeParameter"
                 ] = ac_evse_charge_parameter
             elif self.charging_mode == EVSEChargingMode.DC:
                 # FUZZ DC_EVSEChargeParameter
                 # DC_EVSEChargeParameter is complexType (in xml schema): DC_EVSEChargeParameterType
-                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter()
+                dc_evse_charge_parameter = fuzz_dc_evse_charge_parameter(
+                    modes=msg_config["DC_EVSEChargeParameter"],
+                    valid_values=msg_default_dict["DC_EVSEChargeParameter"],
+                )
                 msg_dict_to_fuzz[
                     "DC_EVSEChargeParameter"
                 ] = dc_evse_charge_parameter
@@ -795,26 +873,75 @@ class EVFuzzer:
         req_key = MessageName.POWER_DELIVERY_REQ
         res_key = MessageName.POWER_DELIVERY_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
 
-        if self.charging_mode == EVSEChargingMode.AC:
-            # FUZZ AC_EVSEStatus
-            # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-            ac_evse_status = fuzz_ac_evse_status()
-        elif self.charging_mode == EVSEChargingMode.DC:
-            # FUZZ DC_EVSEStatus
-            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-            dc_evse_status = fuzz_dc_evse_status()
+        # TODO: IMPORTANT
+        # TODO: Add some check if in modes for that messages
+        # param is not in modes and also not in required
+        # it will not include it
+        # if not in modes but in required it will be fuzzed (with valid value)
+        if msg_config is None:
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(mode="random")
+
+            if self.charging_mode == EVSEChargingMode.AC:
+                # FUZZ AC_EVSEStatus
+                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
+                ac_evse_status = fuzz_ac_evse_status(modes={})
+            elif self.charging_mode == EVSEChargingMode.DC:
+                # FUZZ DC_EVSEStatus
+                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+                dc_evse_status = fuzz_dc_evse_status(modes={})
+            else:
+                # Should never happen
+                logger.error("Invalid charging mode: %s", self.charging_mode)
+                raise ValueError(
+                    f"Invalid charging mode: {self.charging_mode}"
+                )
+
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
         else:
-            # Should never happen
-            logger.error("Invalid charging mode: %s", self.charging_mode)
-            raise ValueError(f"Invalid charging mode: {self.charging_mode}")
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
 
-        # TODO
+            if self.charging_mode == EVSEChargingMode.AC:
+                # FUZZ AC_EVSEStatus
+                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
+                ac_evse_status = fuzz_ac_evse_status(
+                    modes=msg_config["AC_EVSEStatus"],
+                    valid_values=msg_default_dict["AC_EVSEStatus"],
+                )
+            elif self.charging_mode == EVSEChargingMode.DC:
+                # FUZZ DC_EVSEStatus
+                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+                dc_evse_status = fuzz_dc_evse_status(
+                    modes=msg_config["DC_EVSEStatus"],
+                    valid_values=msg_default_dict["DC_EVSEStatus"],
+                )
+            else:
+                # Should never happen
+                logger.error("Invalid charging mode: %s", self.charging_mode)
+                raise ValueError(
+                    f"Invalid charging mode: {self.charging_mode}"
+                )
+
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        # DC_EVSEStatus or AC_EVSEStatus is added to dict_to_fuzz based on charging mode
+        # it's above in if/elif/else
+
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     def fuzz_certificate_update_res(self, msg_config: Optional[dict] = None):
         """Fuzz certificateUpdateRes message in fuzzing_dict
@@ -926,13 +1053,29 @@ class EVFuzzer:
         req_key = MessageName.SESSION_STOP_REQ
         res_key = MessageName.SESSION_STOP_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            response_code = fuzz_response_code(mode="random")
 
-        # TODO
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     def fuzz_metering_receipt_res(self, msg_config: Optional[dict] = None):
         """Fuzz meteringReceiptRes message in fuzzing_dict
@@ -947,26 +1090,74 @@ class EVFuzzer:
         req_key = MessageName.METERING_RECEIPT_REQ
         res_key = MessageName.METERING_RECEIPT_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            response_code = fuzz_response_code(mode="random")
 
-        if self.charging_mode == EVSEChargingMode.AC:
-            # FUZZ AC_EVSEStatus
-            # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-            ac_evse_status = fuzz_ac_evse_status()
-        elif self.charging_mode == EVSEChargingMode.DC:
-            # FUZZ DC_EVSEStatus
-            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-            dc_evse_status = fuzz_dc_evse_status()
+            # TODO: Implement it as method split for AC/DC, also in other methods
+            if self.charging_mode == EVSEChargingMode.AC:
+                # FUZZ AC_EVSEStatus
+                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
+                ac_evse_status = fuzz_ac_evse_status(modes={})
+                msg_dict_to_fuzz["AC_EVSEStatus"] = ac_evse_status
+            elif self.charging_mode == EVSEChargingMode.DC:
+                # FUZZ DC_EVSEStatus
+                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+                dc_evse_status = fuzz_dc_evse_status(modes={})
+                msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+
+            else:
+                # Should never happen
+                logger.error("Invalid charging mode: %s", self.charging_mode)
+                raise ValueError(
+                    f"Invalid charging mode: {self.charging_mode}"
+                )
+
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
         else:
-            # Should never happen
-            logger.error("Invalid charging mode: %s", self.charging_mode)
-            raise ValueError(f"Invalid charging mode: {self.charging_mode}")
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
 
-        # TODO
+            if self.charging_mode == EVSEChargingMode.AC:
+                # FUZZ AC_EVSEStatus
+                # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
+                ac_evse_status = fuzz_ac_evse_status(
+                    modes=msg_config["AC_EVSEStatus"],
+                    valid_values=msg_default_dict["AC_EVSEStatus"],
+                )
+                msg_dict_to_fuzz["AC_EVSEStatus"] = ac_evse_status
+            elif self.charging_mode == EVSEChargingMode.DC:
+                # FUZZ DC_EVSEStatus
+                # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+                dc_evse_status = fuzz_dc_evse_status(
+                    modes=msg_config["DC_EVSEStatus"],
+                    valid_values=msg_default_dict["DC_EVSEStatus"],
+                )
+                msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+            else:
+                # Should never happen
+                logger.error("Invalid charging mode: %s", self.charging_mode)
+                raise ValueError(
+                    f"Invalid charging mode: {self.charging_mode}"
+                )
+
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        # DC_EVSEStatus or AC_EVSEStatus is added to dict_to_fuzz based on charging mode
+        # it's above in if/elif/else
+
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     # AC messages START
     def fuzz_charging_status_res(self, msg_config: Optional[dict] = None):
@@ -982,42 +1173,79 @@ class EVFuzzer:
         req_key = MessageName.CHARGING_STATUS_REQ
         res_key = MessageName.CHARGING_STATUS_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            response_code = fuzz_response_code(mode="random")
+            # EVSEID is type string (in xml schema), (min length: 7, max length:37)
+            evse_id = fuzz_evse_id(mode="random")
+            # FUZZ SAScheduleTupleID
+            # SAScheduleTupleID is short (in some other message is unsignedByte)
+            # => place for mistake in some implementation of this standard
+            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(mode="random")
+            # FUZZ EVSEMaxCurrent
+            # EVSEMaxCurrent is complexType (in xml schema): PhysicalValueType
+            # Optional parameter
+            evse_max_current = fuzz_evse_max_current(modes={})
+            # FUZZ MeterInfo
+            # MeterInfo is complexType (in xml schema): MeterInfoType
+            # Optional parameter
+            meter_info = fuzz_meter_info(modes={})
+            # FUZZ ReceiptRequired
+            # ReceiptRequired is boolean type (in xml schema)
+            # Optional parameter
+            receipt_required = fuzz_receipt_required(mode="random")
+            # FUZZ AC_EVSEStatus
+            # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
+            ac_evse_status = fuzz_ac_evse_status(modes={})
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+            evse_id = fuzz_evse_id(
+                mode=msg_config["EVSEID"],
+                val_type=msg_config["EVSEID"],
+                valid_val=msg_default_dict["EVSEID"],
+            )
+            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(
+                mode=msg_config["SAScheduleTupleID"],
+                valid_val=msg_default_dict["SAScheduleTupleID"],
+            )
+            evse_max_current = fuzz_evse_max_current(
+                modes=msg_config["EVSEMaxCurrent"],
+                valid_values=msg_default_dict["EVSEMaxCurrent"],
+            )
+            meter_info = fuzz_meter_info(
+                modes=msg_config["MeterInfo"],
+                valid_values=msg_default_dict["MeterInfo"],
+            )
+            receipt_required = fuzz_receipt_required(
+                mode=msg_config["ReceiptRequired"]
+            )
+            ac_evse_status = fuzz_ac_evse_status(
+                modes=msg_config["AC_EVSEStatus"],
+                valid_values=msg_default_dict["AC_EVSEStatus"],
+            )
 
-        # FUZZ EVSEID
-        # EVSEID is type string (in xml schema), (min length: 7, max length:37)
-        evse_id = fuzz_evse_id()
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_dict_to_fuzz["EVSEID"] = evse_id
+        msg_dict_to_fuzz["SAScheduleTupleID"] = sa_schedule_tuple_id
+        msg_dict_to_fuzz["EVSEMaxCurrent"] = evse_max_current
+        msg_dict_to_fuzz["MeterInfo"] = meter_info
+        msg_dict_to_fuzz["ReceiptRequired"] = receipt_required
+        msg_dict_to_fuzz["AC_EVSEStatus"] = ac_evse_status
 
-        # FUZZ SAScheduleTupleID
-        # SAScheduleTupleID is short (in some other message is unsignedByte)
-        # => place for mistake in some implementation of this standard
-        sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id()
-
-        # FUZZ EVSEMaxCurrent
-        # EVSEMaxCurrent is complexType (in xml schema): PhysicalValueType
-        # Optional parameter
-        evse_max_current = fuzz_evse_max_current()
-        # dict_to_fuzz['EVSEMaxCurrent'] = evse_max_current
-
-        # FUZZ MeterInfo
-        # MeterInfo is complexType (in xml schema): MeterInfoType
-        # Optional parameter
-        meter_info = fuzz_meter_info()
-
-        # FUZZ ReceiptRequired
-        # ReceiptRequired is boolean type (in xml schema)
-        # Optional parameter
-        receipt_required = fuzz_receipt_required()
-
-        # FUZZ AC_EVSEStatus
-        # AC_EVSEStatus is complexType (in xml schema): AC_EVSEStatusType
-        ac_evse_status = fuzz_ac_evse_status()
-
-        # TODO
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     # AC messages END
     # DC messages START
@@ -1033,21 +1261,48 @@ class EVFuzzer:
         req_key = MessageName.CABLE_CHECK_REQ
         res_key = MessageName.CABLE_CHECK_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ EVSEProcessing
-        # EVSEProcessing is enum type (in xml schema)
-        evse_processing = fuzz_evse_processing()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            # FUZZ EVSEProcessing
+            # EVSEProcessing is enum type (in xml schema)
+            evse_processing = fuzz_evse_processing(mode="random")
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(mode="random")
 
-        # FUZZ DC_EVSEStatus
-        # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-        dc_evse_status = fuzz_dc_evse_status()
+            # FUZZ DC_EVSEStatus
+            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+            dc_evse_status = fuzz_dc_evse_status(modes={})
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            evse_processing = fuzz_evse_processing(
+                mode=msg_config["EVSEProcessing"],
+                valid_val=msg_default_dict["EVSEProcessing"],
+            )
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+            dc_evse_status = fuzz_dc_evse_status(
+                modes=msg_config["DC_EVSEStatus"],
+                valid_values=msg_default_dict["DC_EVSEStatus"],
+            )
 
-        # TODO
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["EVSEProcessing"] = evse_processing
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     def fuzz_pre_charge_res(self, msg_config: Optional[dict] = None):
         """Fuzz preChargeRes message in fuzzing_dict
@@ -1061,21 +1316,49 @@ class EVFuzzer:
         req_key = MessageName.PRE_CHARGE_REQ
         res_key = MessageName.PRE_CHARGE_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(mode="random")
 
-        # FUZZ DC_EVSEStatus
-        # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-        dc_evse_status = fuzz_dc_evse_status()
+            # FUZZ DC_EVSEStatus
+            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+            dc_evse_status = fuzz_dc_evse_status(modes={})
 
-        # FUZZ EVSEPresentVoltage
-        # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
-        evse_present_voltage = fuzz_evse_present_voltage()
+            # FUZZ EVSEPresentVoltage
+            # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
+            evse_present_voltage = fuzz_evse_present_voltage(modes={})
 
-        # TODO
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+            dc_evse_status = fuzz_dc_evse_status(
+                modes=msg_config["DC_EVSEStatus"],
+                valid_values=msg_default_dict["DC_EVSEStatus"],
+            )
+            evse_present_voltage = fuzz_evse_present_voltage(
+                modes=msg_config["EVSEPresentVoltage"],
+                valid_values=msg_default_dict["EVSEPresentVoltage"],
+            )
+
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+        msg_dict_to_fuzz["EVSEPresentVoltage"] = evse_present_voltage
+
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     def fuzz_current_demand_res(self, msg_config: Optional[dict] = None):
         """Fuzz currentDemandRes message in fuzzing_dict
@@ -1093,77 +1376,153 @@ class EVFuzzer:
         req_key = MessageName.CURRENT_DEMAND_REQ
         res_key = MessageName.CURRENT_DEMAND_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(mode="random")
+            # FUZZ DC_EVSEStatus
+            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+            dc_evse_status = fuzz_dc_evse_status(modes={})
+            # FUZZ EVSEPresentVoltage
+            # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
+            evse_present_voltage = fuzz_evse_present_voltage(modes={})
+            # FUZZ EVSEPresentCurrent
+            # EVSEPresentCurrent is complexType (in xml schema): PhysicalValueType
+            evse_present_current = fuzz_evse_present_current(modes={})
+            # FUZZ EVSECurrentLimitAchieved
+            # EVSECurrentLimitAchieved is boolean type (in xml schema)
+            evse_current_limit_achieved = fuzz_evse_current_limit_achieved(
+                mode="random"
+            )
+            # FUZZ EVSEVoltageLimitAchieved
+            # EVSEVoltageLimitAchieved is boolean type (in xml schema)
+            evse_voltage_limit_achieved = fuzz_evse_voltage_limit_achieved(
+                mode="random"
+            )
+            # FUZZ EVSEPowerLimitAchieved
+            # EVSEPowerLimitAchieved is boolean type (in xml schema)
+            evse_power_limit_achieved = fuzz_evse_power_limit_achieved(
+                mode="random"
+            )
+            # FUZZ EVSEMaximumVoltage
+            # EVSEMaximumVoltage is complexType (in xml schema): PhysicalValueType
+            # Optional parameter
+            evse_maximum_voltage = fuzz_evse_maximum_voltage(modes={})
+            # FUZZ EVSEMaximumCurrent
+            # EVSEMaximumCurrent is complexType (in xml schema): PhysicalValueType
+            # Optional parameter
+            evse_maximum_current = fuzz_evse_maximum_current(modes={})
+            # FUZZ EVSEMaximumPower
+            # EVSEMaximumPower is complexType (in xml schema): PhysicalValueType
+            # Optional parameter
+            evse_maximum_power = fuzz_evse_maximum_power(modes={})
+            # FUZZ EVSEID
+            # EVSEID is type string (in xml schema), (min length: 7, max length:37)
+            # In standard for this message type is: hexBinary max length 32
+            # another mistake in standard (previous were string max length 37)
+            # every EVSEID defined as simpleType: evseIDType - in schema is string
+            # inconsistency in standard
+            # If an SECC cannot provide such ID data,
+            # the value of the EVSEID is set to zero (00hex).
+            evse_id = fuzz_evse_id(mode="random")
+            # FUZZ SAScheduleTupleID
+            # SAScheduleTupleID is short (in some other message is unsignedByte)
+            # => place for mistake in some implementation of this standard
+            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(mode="random")
+            # FUZZ MeterInfo
+            # MeterInfo is complexType (in xml schema): MeterInfoType
+            # Optional parameter
+            meter_info = fuzz_meter_info(modes={})
+            # FUZZ ReceiptRequired
+            # ReceiptRequired is boolean type (in xml schema)
+            # Optional parameter
+            receipt_required = fuzz_receipt_required(mode="random")
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+            dc_evse_status = fuzz_dc_evse_status(
+                modes=msg_config["DC_EVSEStatus"],
+                valid_values=msg_default_dict["DC_EVSEStatus"],
+            )
+            evse_present_voltage = fuzz_evse_present_voltage(
+                modes=msg_config["EVSEPresentVoltage"],
+                valid_values=msg_default_dict["EVSEPresentVoltage"],
+            )
+            evse_present_current = fuzz_evse_present_current(
+                modes=msg_config["EVSEPresentCurrent"],
+                valid_values=msg_default_dict["EVSEPresentCurrent"],
+            )
+            evse_current_limit_achieved = fuzz_evse_current_limit_achieved(
+                mode=msg_config["EVSECurrentLimitAchieved"]
+            )
+            evse_voltage_limit_achieved = fuzz_evse_voltage_limit_achieved(
+                mode=msg_config["EVSEVoltageLimitAchieved"]
+            )
+            evse_power_limit_achieved = fuzz_evse_power_limit_achieved(
+                mode=msg_config["EVSEPowerLimitAchieved"]
+            )
+            evse_maximum_voltage = fuzz_evse_maximum_voltage(
+                modes=msg_config["EVSEMaximumVoltage"],
+                valid_values=msg_default_dict["EVSEMaximumVoltage"],
+            )
+            evse_maximum_current = fuzz_evse_maximum_current(
+                modes=msg_config["EVSEMaximumCurrent"],
+                valid_values=msg_default_dict["EVSEMaximumCurrent"],
+            )
+            evse_maximum_power = fuzz_evse_maximum_power(
+                modes=msg_config["EVSEMaximumPower"],
+                valid_values=msg_default_dict["EVSEMaximumPower"],
+            )
+            evse_id = fuzz_evse_id(
+                mode=msg_config["EVSEID"],
+                val_type=msg_config["EVSEID"],
+                valid_val=msg_default_dict["EVSEID"],
+            )
+            sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id(
+                mode=msg_config["SAScheduleTupleID"],
+                valid_val=msg_default_dict["SAScheduleTupleID"],
+            )
+            meter_info = fuzz_meter_info(
+                modes=msg_config["MeterInfo"],
+                valid_values=msg_default_dict["MeterInfo"],
+            )
+            receipt_required = fuzz_receipt_required(
+                mode=msg_config["ReceiptRequired"]
+            )
 
-        # FUZZ DC_EVSEStatus
-        # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-        dc_evse_status = fuzz_dc_evse_status()
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+        msg_dict_to_fuzz["EVSEPresentVoltage"] = evse_present_voltage
+        msg_dict_to_fuzz["EVSEPresentCurrent"] = evse_present_current
+        msg_dict_to_fuzz[
+            "EVSECurrentLimitAchieved"
+        ] = evse_current_limit_achieved
+        msg_dict_to_fuzz[
+            "EVSEVoltageLimitAchieved"
+        ] = evse_voltage_limit_achieved
+        msg_dict_to_fuzz["EVSEPowerLimitAchieved"] = evse_power_limit_achieved
+        msg_dict_to_fuzz["EVSEMaximumVoltage"] = evse_maximum_voltage
+        msg_dict_to_fuzz["EVSEMaximumCurrent"] = evse_maximum_current
+        msg_dict_to_fuzz["EVSEMaximumPower"] = evse_maximum_power
+        msg_dict_to_fuzz["EVSEID"] = evse_id
+        msg_dict_to_fuzz["SAScheduleTupleID"] = sa_schedule_tuple_id
+        msg_dict_to_fuzz["MeterInfo"] = meter_info
+        msg_dict_to_fuzz["ReceiptRequired"] = receipt_required
 
-        # FUZZ EVSEPresentVoltage
-        # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
-        evse_present_voltage = fuzz_evse_present_voltage()
-
-        # FUZZ EVSEPresentCurrent
-        # EVSEPresentCurrent is complexType (in xml schema): PhysicalValueType
-        evse_present_current = fuzz_evse_present_current()
-
-        # FUZZ EVSECurrentLimitAchieved
-        # EVSECurrentLimitAchieved is boolean type (in xml schema)
-        evse_current_limit_achieved = fuzz_evse_current_limit_achieved()
-
-        # FUZZ EVSEVoltageLimitAchieved
-        # EVSEVoltageLimitAchieved is boolean type (in xml schema)
-        evse_voltage_limit_achieved = fuzz_evse_voltage_limit_achieved()
-
-        # FUZZ EVSEPowerLimitAchieved
-        # EVSEPowerLimitAchieved is boolean type (in xml schema)
-        evse_power_limit_achieved = fuzz_evse_power_limit_achieved()
-
-        # FUZZ EVSEMaximumVoltage
-        # EVSEMaximumVoltage is complexType (in xml schema): PhysicalValueType
-        # Optional parameter
-        evse_maximum_voltage = fuzz_evse_maximum_voltage()
-
-        # FUZZ EVSEMaximumCurrent
-        # EVSEMaximumCurrent is complexType (in xml schema): PhysicalValueType
-        # Optional parameter
-        evse_maximum_current = fuzz_evse_maximum_current()
-
-        # FUZZ EVSEMaximumPower
-        # EVSEMaximumPower is complexType (in xml schema): PhysicalValueType
-        # Optional parameter
-        evse_maximum_power = fuzz_evse_maximum_power()
-
-        # FUZZ EVSEID
-        # EVSEID is type string (in xml schema), (min length: 7, max length:37)
-        # In standard for this message type is: hexBinary max length 32
-        # another mistake in standard (previous were string max length 37)
-        # every EVSEID defined as simpleType: evseIDType - in schema is string
-        # inconsistency in standard
-        # If an SECC cannot provide such ID data,
-        # the value of the EVSEID is set to zero (00hex).
-        evse_id = fuzz_evse_id()
-
-        # FUZZ SAScheduleTupleID
-        # SAScheduleTupleID is short (in some other message is unsignedByte)
-        # => place for mistake in some implementation of this standard
-        sa_schedule_tuple_id = fuzz_sa_schedule_tuple_id()
-
-        # FUZZ MeterInfo
-        # MeterInfo is complexType (in xml schema): MeterInfoType
-        # Optional parameter
-        meter_info = fuzz_meter_info()
-
-        # FUZZ ReceiptRequired
-        # ReceiptRequired is boolean type (in xml schema)
-        # Optional parameter
-        receipt_required = fuzz_receipt_required()
-
-        # TODO
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     def fuzz_welding_detection_res(self, msg_config: Optional[dict] = None):
         """Fuzz weldingDetectionRes message in fuzzing_dict
@@ -1177,28 +1536,50 @@ class EVFuzzer:
         req_key = MessageName.WELDING_DETECTION_REQ
         res_key = MessageName.WELDING_DETECTION_RES
 
-        dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        msg_dict_to_fuzz = self.fuzzing_dict[req_key][res_key]
+        # Keep default values for all params in the message
+        msg_default_dict = self.default_dict[req_key][res_key]
 
-        # FUZZ ResponseCode
-        # ResponseCode is enum type (in xml schema)
-        response_code = fuzz_response_code()
+        # MODE ALL - all parameters will be fuzzed
+        # Config file is NOT used
+        if msg_config is None:
+            # FUZZ ResponseCode
+            # ResponseCode is enum type (in xml schema)
+            response_code = fuzz_response_code(mode="random")
 
-        # FUZZ DC_EVSEStatus
-        # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
-        dc_evse_status = fuzz_dc_evse_status()
+            # FUZZ DC_EVSEStatus
+            # DC_EVSEStatus is complexType (in xml schema): DC_EVSEStatusType
+            dc_evse_status = fuzz_dc_evse_status(modes={})
 
-        # FUZZ EVSEPresentVoltage
-        # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
-        evse_present_voltage = fuzz_evse_present_voltage()
+            # FUZZ EVSEPresentVoltage
+            # EVSEPresentVoltage is complexType (in xml schema): PhysicalValueType
+            evse_present_voltage = fuzz_evse_present_voltage(modes={})
+        # msg_config is not None for modes: MESSAGE, CONFIG
+        # Mode MESSAGE - fuzz only one message params specified in config file
+        # Mode CONFIG - fuzz all messages and params specified in config file
+        else:
+            response_code = fuzz_response_code(
+                mode=msg_config["ResponseCode"],
+                valid_val=msg_default_dict["ResponseCode"],
+            )
+            dc_evse_status = fuzz_dc_evse_status(
+                modes=msg_config["DC_EVSEStatus"],
+                valid_values=msg_default_dict["DC_EVSEStatus"],
+            )
+            evse_present_voltage = fuzz_evse_present_voltage(
+                modes=msg_config["EVSEPresentVoltage"],
+                valid_values=msg_default_dict["EVSEPresentVoltage"],
+            )
 
-        # TODO
+        # Change values in dict_to_fuzz
+        msg_dict_to_fuzz["ResponseCode"] = response_code
+        msg_dict_to_fuzz["DC_EVSEStatus"] = dc_evse_status
+        msg_dict_to_fuzz["EVSEPresentVoltage"] = evse_present_voltage
+
+        # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        self.fuzzing_dict[req_key][res_key] = msg_dict_to_fuzz
 
     # DC messages END
-
-    def fuzz2(self):
-        # TODO: Call generator and generate dict for concrete message and
-        # replace orignial one from fuzzing_dict
-        pass
 
     # TODO find all loading functions from file to dict and replace it
     # with one general function for this purpose

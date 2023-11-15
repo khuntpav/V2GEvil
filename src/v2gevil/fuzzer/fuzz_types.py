@@ -822,7 +822,7 @@ def gen_invalid_unsigned_long_num(
 
 
 def gen_invalid_unsigned_long(
-    mode: ParamFuzzMode = ParamFuzzMode.RANDOM,
+    mode: ParamFuzzMode = ParamFuzzMode.RANDOM, valid_val: Optional[int] = None
 ) -> Union[str, int, float]:
     """Generate invalid xs:unsignedLong (type in XML schema)
 
@@ -830,6 +830,16 @@ def gen_invalid_unsigned_long(
     """
 
     match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for xs:unsignedLong, "
+                    "using valid value randomly generated."
+                    "Disclaimer: Generated value - meets the conditions for length "
+                    "and type but may not meet the valid value for particular parameter."
+                )
+                return random.randint(0, 18446744073709551615)
+            return valid_val
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:

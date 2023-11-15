@@ -12,6 +12,9 @@ from ..messages.MsgDataTypes import (
     EnergyTransferModeType,
     EVSEProcessingType,
     costKindType,
+    EVSENotificationType,
+    isolationLevelType,
+    DC_EVSEStatusCodeType,
 )
 from ..fuzzer.fuzzer_enums import ParamFuzzMode
 from ..fuzzer.fuzz_types import (
@@ -471,7 +474,7 @@ def fuzz_supported_energy_transfer_mode(
 
     energy_transfered_mode = [
         fuzz_energy_transfer_mode(
-            modes["EnergyTransferMode"], valid_values["EnergyTransferMode"]
+            mode=modes["EnergyTransferMode"], valid_val=valid_values["EnergyTransferMode"]
         )
     ]
 
@@ -981,7 +984,7 @@ def fuzz_gen_challenge(
 
 
 def fuzz_evse_processing(
-    mode: str = "random", valid_val: Optional[str] = None
+    mode: str = "valid", valid_val: Optional[str] = None
 ) -> Union[str, int, float]:
     """Fuzz evse processing status.
 
@@ -1580,26 +1583,608 @@ def fuzz_sa_schedule_list(
     return {"SAScheduleTuple": sa_schedule_tuple}
 
 
-def fuzz_ac_evse_charge_parameter() -> str:
+def fuzz_evse_nominal_voltage(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse nominal voltage"""
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSENominalVoltage"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSENominalVoltage"],
+        unit_val=unitSymbolType.VOLT.value,
+        valid_values=valid_values["EVSENominalVoltage"],
+    )
+
+
+def fuzz_ac_evse_charge_parameter(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz ac evse charge parameter"""
-    # TODO NEXT
-    raise NotImplementedError
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["AC_EVSEStatus", "EVSENominalVoltage", "EVSEMaxCurrent"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    ac_evse_status = fuzz_ac_evse_status(
+        modes=modes["AC_EVSEStatus"],
+        valid_values=valid_values["AC_EVSEStatus"],
+    )
+    evse_nominal_voltage = fuzz_evse_nominal_voltage(
+        modes=modes["EVSENominalVoltage"],
+        valid_values=valid_values["EVSENominalVoltage"],
+    )
+    evse_max_current = fuzz_evse_max_current(
+        modes=modes["EVSEMaxCurrent"],
+        valid_values=valid_values["EVSEMaxCurrent"],
+    )
+
+    return {
+        "AC_EVSEStatus": ac_evse_status,
+        "EVSENominalVoltage": evse_nominal_voltage,
+        "EVSEMaxCurrent": evse_max_current,
+    }
 
 
-def fuzz_dc_evse_charge_parameter() -> str:
+def fuzz_evse_max_current_limit(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse max current limit"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMaxCurrentLimit"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEMaxCurrentLimit"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEMaxCurrentLimit"],
+    )
+
+
+def fuzz_evse_max_power_limit(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse max power limit"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMaxPowerLimit"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEMaxPowerLimit"],
+        unit_val=unitSymbolType.WATT.value,
+        valid_values=valid_values["EVSEMaxPowerLimit"],
+    )
+
+
+def fuzz_evse_max_voltage_limit(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse max voltage limit"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMaxVoltageLimit"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEMaxVoltageLimit"],
+        unit_val=unitSymbolType.VOLT.value,
+        valid_values=valid_values["EVSEMaxVoltageLimit"],
+    )
+
+
+def fuzz_evse_min_current_limit(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse min current limit"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMinCurrentLimit"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEMinCurrentLimit"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEMinCurrentLimit"],
+    )
+
+
+def fuzz_evse_min_voltage_limit(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse min voltage limit"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMinVoltageLimit"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEMinVoltageLimit"],
+        unit_val=unitSymbolType.VOLT.value,
+        valid_values=valid_values["EVSEMinVoltageLimit"],
+    )
+
+
+def fuzz_evse_current_regulation_tolerance(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse current regulation tolerance"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSECurrentRegulationTolerance"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSECurrentRegulationTolerance"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSECurrentRegulationTolerance"],
+    )
+
+
+def fuzz_evse_peak_current_ripple(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse peak current ripple"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEPeakCurrentRipple"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEPeakCurrentRipple"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEPeakCurrentRipple"],
+    )
+
+
+def fuzz_evse_energy_to_be_delivered(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
+    """Fuzz evse energy to be delivered"""
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEEnergyToBeDelivered"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
+    return fuzz_physical_value_type(
+        modes=modes["EVSEEnergyToBeDelivered"],
+        unit_val=unitSymbolType.WATT_HOUR.value,
+        valid_values=valid_values["EVSEEnergyToBeDelivered"],
+    )
+
+
+def fuzz_dc_evse_charge_parameter(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz dc evse charge parameter"""
-    # TODO NEXT
-    raise NotImplementedError
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in [
+        "DC_EVSEStatus",
+        "EVSEMaxCurrentLimit",
+        "EVSEMaxPowerLimit",
+        "EVSEMaxVoltageLimit",
+        "EVSEMinCurrentLimit",
+        "EVSEMinVoltageLimit",
+        "EVSECurrentRegulationTolerance",
+        "EVSEPeakCurrentRipple",
+        "EVSEEnergyToBeDelivered",
+    ]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    dc_evse_status = fuzz_dc_evse_status(
+        modes=modes["DC_EVSEStatus"],
+        valid_values=valid_values["DC_EVSEStatus"],
+    )
+    evse_max_current_limit = fuzz_evse_max_current_limit(
+        modes=modes["EVSEMaxCurrentLimit"],
+        valid_values=valid_values["EVSEMaxCurrentLimit"],
+    )
+
+    evse_max_power_limit = fuzz_evse_max_power_limit(
+        modes=modes["EVSEMaxPowerLimit"],
+        valid_values=valid_values["EVSEMaxPowerLimit"],
+    )
+
+    evse_max_voltage_limit = fuzz_evse_max_voltage_limit(
+        modes=modes["EVSEMaxVoltageLimit"],
+        valid_values=valid_values["EVSEMaxVoltageLimit"],
+    )
+
+    evse_min_current_limit = fuzz_evse_min_current_limit(
+        modes=modes["EVSEMinCurrentLimit"],
+        valid_values=valid_values["EVSEMinCurrentLimit"],
+    )
+
+    evse_min_voltage_limit = fuzz_evse_min_voltage_limit(
+        modes=modes["EVSEMinVoltageLimit"],
+        valid_values=valid_values["EVSEMinVoltageLimit"],
+    )
+
+    evse_current_regulation_tolerance = fuzz_evse_current_regulation_tolerance(
+        modes=modes["EVSECurrentRegulationTolerance"],
+        valid_values=valid_values["EVSECurrentRegulationTolerance"],
+    )
+
+    evse_peak_current_ripple = fuzz_evse_peak_current_ripple(
+        modes=modes["EVSEPeakCurrentRipple"],
+        valid_values=valid_values["EVSEPeakCurrentRipple"],
+    )
+
+    evse_energy_to_be_delivered = fuzz_evse_energy_to_be_delivered(
+        modes=modes["EVSEEnergyToBeDelivered"],
+        valid_values=valid_values["EVSEEnergyToBeDelivered"],
+    )
+
+    return {
+        "DC_EVSEStatus": dc_evse_status,
+        "EVSEMaxCurrentLimit": evse_max_current_limit,
+        "EVSEMaxPowerLimit": evse_max_power_limit,
+        "EVSEMaxVoltageLimit": evse_max_voltage_limit,
+        "EVSEMinCurrentLimit": evse_min_current_limit,
+        "EVSEMinVoltageLimit": evse_min_voltage_limit,
+        "EVSECurrentRegulationTolerance": evse_current_regulation_tolerance,
+        "EVSEPeakCurrentRipple": evse_peak_current_ripple,
+        "EVSEEnergyToBeDelivered": evse_energy_to_be_delivered,
+    }
 
 
-def fuzz_ac_evse_status() -> str:
+def fuzz_notification_max_delay(
+    mode: str = "valid", valid_val: Optional[int] = None
+) -> Union[str, int, float]:
+    """Fuzz Notification max delay
+
+    NotificationMaxDelay is type xs:unsignedShort
+    """
+
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for NotificationMaxDelay, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    return gen_invalid_unsigned_short(mode=mode, valid_val=valid_val)
+
+
+def fuzz_evse_notification(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz evse notification
+
+    EVSENotification type is enum, so valid value is one of the enum values EVSENotificationType.
+    """
+    # Convert mode to enum
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for EVSENotification, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for EVSENotification,"
+                    "using default valid value randomly chosen "
+                    "from EVSENotificationType enum."
+                )
+                return random.choice(list(EVSENotificationType)).value
+            return valid_val
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            return gen_malicous_string()
+        case ParamFuzzMode.INT:
+            return gen_num()
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "EVSENotificationType, using random mode."
+                )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
+
+
+def fuzz_rcd(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz RCD"""
+
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning("Invalid fuzzing mode for RCD, using random mode.")
+        mode = ParamFuzzMode.RANDOM
+
+    # TODO: Valid val is True or False, not used valid_val for now
+    return gen_invalid_bool(mode=mode)
+
+
+def fuzz_ac_evse_status(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz ac evse status"""
-    raise NotImplementedError
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSENotification", "EVSENotification", "RCD"]:
+        # Attribute is not specified in config dict => don't fuzz it
+        # => valid mode
+        if name not in modes:
+            modes[name] = [ParamFuzzMode.VALID.value]
+        if name not in valid_values:
+            valid_values[name] = None
+
+    notification_max_delay = fuzz_notification_max_delay(
+        mode=modes["NotificationMaxDelay"],
+        valid_val=valid_values["NotificationMaxDelay"],
+    )
+
+    evse_notification = fuzz_evse_notification(
+        mode=modes["EVSENotification"],
+        valid_val=valid_values["EVSENotification"],
+    )
+
+    rcd = fuzz_rcd(mode=modes["RCD"], valid_val=valid_values["RCD"])
+
+    return {
+        "NotificationMaxDelay": notification_max_delay,
+        "EVSENotification": evse_notification,
+        "RCD": rcd,
+    }
 
 
-def fuzz_dc_evse_status() -> str:
+def fuzz_evse_isolation_status(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """Fuzz evse isolation status"""
+
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for EVSEIsolationStatus, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for EVSEIsolationStatus,"
+                    "using default valid value randomly chosen "
+                    "from EVSEIsolationStatusType enum."
+                )
+                return random.choice(list(isolationLevelType)).value
+            return valid_val
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            return gen_malicous_string()
+        case ParamFuzzMode.INT:
+            return gen_num()
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "EVSEIsolationStatusType, using random mode."
+                )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
+
+
+def fuzz_dc_evse_status_code(
+    mode: str = "valid", valid_val: Optional[str] = None
+) -> Union[str, int, float]:
+    """ "Fuzz DC EVSE Status Code
+
+    DC_EVSEStatusCode is enum, so valid value is one of the enum values DC_EVSEStatusCodeType.
+    """
+    try:
+        mode = ParamFuzzMode(mode)
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for DC_EVSEStatusCode, using random mode."
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for DC_EVSEStatusCode,"
+                    "using default valid value randomly chosen "
+                    "from DC_EVSEStatusCodeType enum."
+                )
+                return random.choice(list(DC_EVSEStatusCodeType)).value
+            return valid_val
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            return gen_malicous_string()
+        case ParamFuzzMode.INT:
+            return gen_num()
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "DC_EVSEStatusCodeType, using random mode."
+                )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
+
+
+def fuzz_dc_evse_status(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz dc evse status"""
-    raise NotImplementedError
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    notification_max_delay = fuzz_notification_max_delay(
+        mode=modes["NotificationMaxDelay"],
+        valid_val=valid_values["NotificationMaxDelay"],
+    )
+
+    evse_notification = fuzz_evse_notification(
+        mode=modes["EVSENotification"],
+        valid_val=valid_values["EVSENotification"],
+    )
+
+    evse_isolation_status = fuzz_evse_isolation_status(
+        mode=modes["EVSEIsolationStatus"],
+        valid_val=valid_values["EVSEIsolationStatus"],
+    )
+
+    evse_status_code = fuzz_dc_evse_status_code()
+
+    return {
+        "NotificationMaxDelay": notification_max_delay,
+        "EVSENotification": evse_notification,
+        "EVSEIsolationStatus": evse_isolation_status,
+        "DC_EVSEStatusCode": evse_status_code,
+    }
 
 
 def fuzz_sa_provisioning_certificate_chain() -> str:
@@ -1629,7 +2214,7 @@ def fuzz_emaid() -> str:
     raise NotImplementedError
 
 
-def fuzz_retry_counter(mode: str = "random") -> Union[str, int, float]:
+def fuzz_retry_counter(mode: str = "valid") -> Union[str, int, float]:
     """Fuzz retry counter
 
     If the ResponseCode was 'FAILED_NoCertificateAvailable' or 'FAILED_ContractCanceled',
@@ -1660,7 +2245,7 @@ def fuzz_retry_counter(mode: str = "random") -> Union[str, int, float]:
 
 
 def fuzz_sa_schedule_tuple_id(
-    mode: str = "random", valid_val: Optional[int] = None
+    mode: str = "valid", valid_val: Optional[int] = None
 ) -> Union[str, int, float]:
     """Fuzz sa schedule tuple id
 
@@ -1686,7 +2271,7 @@ def fuzz_sa_schedule_tuple_id(
 
 
 def fuzz_multiplier(
-    mode: str = "random", valid_val: Optional[int] = None
+    mode: str = "valid", valid_val: Optional[int] = None
 ) -> Union[str, int, float]:
     """Fuzz multiplier
 
@@ -1710,7 +2295,7 @@ def fuzz_multiplier(
 
 
 def fuzz_unit(
-    mode: str = "random", unit_val: str = "", valid_val: Optional[str] = None
+    mode: str = "valid", unit_val: str = "", valid_val: Optional[str] = None
 ) -> Union[str, int, float]:
     """Fuzz unit
 
@@ -1782,7 +2367,7 @@ def fuzz_unit(
 
 
 def fuzz_value(
-    mode: str = "random", valid_val: Optional[int] = None
+    mode: str = "valid", valid_val: Optional[int] = None
 ) -> Union[str, int, float]:
     """Fuzz value
 
@@ -1835,17 +2420,31 @@ def fuzz_physical_value_type(
     return {"Multiplier": multiplier, "Unit": unit, "Value": value}
 
 
-def fuzz_evse_max_current(modes: dict) -> dict:
+def fuzz_evse_max_current(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse max current.
 
     EVSEMaxCurrent is complexType: PhysicalValueType."""
 
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEMaxCurrent"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
     return fuzz_physical_value_type(
-        modes["EVSEMaxCurrent"], unit_val=unitSymbolType.AMPERE.value
+        modes["EVSEMaxCurrent"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEMaxCurrent"],
     )
 
 
-def fuzz_meter_id(mode: str = "random"):
+def fuzz_meter_id(mode: str = "valid", valid_val: Optional[int] = None):
     """Fuzz meter id
 
     MeterID is type xs:unsignedByte (in xml schema).
@@ -1859,10 +2458,10 @@ def fuzz_meter_id(mode: str = "random"):
         )
         mode = ParamFuzzMode.RANDOM
 
-    return gen_invalid_unsigned_byte(mode=mode)
+    return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_val)
 
 
-def fuzz_meter_reading(mode: str = "random"):
+def fuzz_meter_reading(mode: str = "valid", valid_val: Optional[int] = None):
     """Fuzz meter reading
 
     MeterReading is type xs:unsignedLong (in xml schema).
@@ -1876,10 +2475,12 @@ def fuzz_meter_reading(mode: str = "random"):
         )
         mode = ParamFuzzMode.RANDOM
 
-    return gen_invalid_unsigned_long(mode=mode)
+    return gen_invalid_unsigned_long(mode=mode, valid_val=valid_val)
 
 
-def fuzz_sig_meter_reading(mode: str = "random"):
+def fuzz_sig_meter_reading(
+    mode: str = "valid", valid_val: Optional[str] = None
+):
     """Fuzz sig meter reading
 
     SigMeterReading is type xs:base64Binary, maxLength 64.
@@ -1894,6 +2495,15 @@ def fuzz_sig_meter_reading(mode: str = "random"):
         mode = ParamFuzzMode.RANDOM
 
     match mode:
+        case ParamFuzzMode.VALID:
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for SigMeterReading,"
+                    "using default valid value randomly chosen "
+                    "from EVSENotificationType enum."
+                )
+                return random.randbytes(random.randint(1, 64)).hex()
+            return valid_val
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
@@ -1941,7 +2551,7 @@ def fuzz_sig_meter_reading(mode: str = "random"):
             )
 
 
-def fuzz_meter_status(mode: str = "random"):
+def fuzz_meter_status(mode: str = "valid", valid_val: Optional[int] = None):
     """Fuzz meter status
 
     MeterStatus is type xs:short (in xml schema).
@@ -1955,10 +2565,12 @@ def fuzz_meter_status(mode: str = "random"):
         )
         mode = ParamFuzzMode.RANDOM
 
-    return gen_invalid_short(mode=mode)
+    # xs:short => valid values: -32768 to 32767
+
+    return gen_invalid_short(mode=mode, valid_val=valid_val)
 
 
-def fuzz_t_meter(mode: str = "random"):
+def fuzz_t_meter(mode: str = "valid", valid_val: Optional[int] = None):
     """Fuzz t meter
 
     TMeter is type xs:long (in xml schema).
@@ -1970,10 +2582,12 @@ def fuzz_t_meter(mode: str = "random"):
         logger.warning("Invalid fuzzing mode for TMeter, using random mode.")
         mode = ParamFuzzMode.RANDOM
 
-    return gen_invalid_long(mode=mode)
+    return gen_invalid_long(mode=mode, valid_val=valid_val)
 
 
-def fuzz_meter_info(modes: dict) -> dict:
+def fuzz_meter_info(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz meter info
 
     MeterInfo is complexType: MeterInfoType.
@@ -1986,22 +2600,47 @@ def fuzz_meter_info(modes: dict) -> dict:
     TMeter is type xs:long (in xml schema).
     """
 
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in [
+        "MeterID",
+        "MeterReading",
+        "SigMeterReading",
+        "MeterStatus",
+        "TMeter",
+    ]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
     # xs:unsignedByte
-    meter_id = fuzz_meter_id(modes["MeterID"])
+    meter_id = fuzz_meter_id(
+        modes["MeterID"], valid_val=valid_values["MeterID"]
+    )
 
     # xs:unsignedLong, 0 and 18446744073709551615 are valid values
-    meter_reading = fuzz_meter_reading(modes["MeterReading"])
+    meter_reading = fuzz_meter_reading(
+        modes["MeterReading"], valid_val=valid_values["MeterReading"]
+    )
 
     # xs:base64Binary, maxLength 64
     # binary datatypes (xs:hexBinary and xs:base64Binary),
     # for which lengths are expressed in number of bytes (8 bits) of binary data
-    sig_meter_reading = fuzz_sig_meter_reading(modes["SigMeterReading"])
+    sig_meter_reading = fuzz_sig_meter_reading(
+        modes["SigMeterReading"], valid_val=valid_values["SigMeterReading"]
+    )
 
-    # xs:short, valid values: -32768 to 32767
-    meter_status = fuzz_meter_status(modes["MeterStatus"])
+    # xs:short => valid values: -32768 to 32767
+    meter_status = fuzz_meter_status(
+        modes["MeterStatus"], valid_val=valid_values["MeterStatus"]
+    )
 
-    # xs:long, valid values: -9223372036854775808 to 9223372036854775807
-    t_meter = fuzz_t_meter(modes["TMeter"])
+    # xs:long => valid values: -9223372036854775808 to 9223372036854775807
+    t_meter = fuzz_t_meter(modes["TMeter"], valid_val=valid_values["TMeter"])
 
     return {
         "MeterID": meter_id,
@@ -2012,7 +2651,7 @@ def fuzz_meter_info(modes: dict) -> dict:
     }
 
 
-def fuzz_receipt_required(mode: str = "random") -> Union[str, int, float]:
+def fuzz_receipt_required(mode: str = "valid") -> Union[str, int, float]:
     """Fuzz receipt required
 
     ReceiptRequired is type xs:boolean (in xml schema).
@@ -2029,30 +2668,60 @@ def fuzz_receipt_required(mode: str = "random") -> Union[str, int, float]:
     return gen_invalid_bool(mode=mode)
 
 
-def fuzz_evse_present_voltage(modes: dict) -> dict:
+def fuzz_evse_present_voltage(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse present voltage
 
     EVSEPresentVoltage is complexType: PhysicalValueType.
     """
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEPresentVoltage"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
 
     return fuzz_physical_value_type(
-        modes["EVSEPresentVoltage"], unit_val=unitSymbolType.VOLT.value
+        modes["EVSEPresentVoltage"],
+        unit_val=unitSymbolType.VOLT.value,
+        valid_values=valid_values["EVSEPresentVoltage"],
     )
 
 
-def fuzz_evse_present_current(modes: dict) -> dict:
+def fuzz_evse_present_current(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse present current
 
     EVSEPresentCurrent is complexType: PhysicalValueType.
     """
+    # TODO
+    #if isinstance(modes, dict):
+    #    # If dict is empty
+    #    if not modes:
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+    for name in ["EVSEPresentCurrent"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
 
     return fuzz_physical_value_type(
-        modes["EVSEPresentCurrent"], unit_val=unitSymbolType.AMPERE.value
+        modes["EVSEPresentCurrent"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEPresentCurrent"],
     )
 
 
 def fuzz_evse_current_limit_achieved(
-    mode: str = "random",
+    mode: str = "valid",
 ) -> Union[str, int, float]:
     """Fuzz evse current limit achieved
 
@@ -2071,7 +2740,7 @@ def fuzz_evse_current_limit_achieved(
 
 
 def fuzz_evse_voltage_limit_achieved(
-    mode: str = "random",
+    mode: str = "valid",
 ) -> Union[str, int, float]:
     """Fuzz evse voltage limit achieved
 
@@ -2089,7 +2758,7 @@ def fuzz_evse_voltage_limit_achieved(
 
 
 def fuzz_evse_power_limit_achieved(
-    mode: str = "random",
+    mode: str = "valid",
 ) -> Union[str, int, float]:
     """Fuzz evse power limit achieved
 
@@ -2106,31 +2775,77 @@ def fuzz_evse_power_limit_achieved(
     return gen_invalid_bool(mode=mode)
 
 
-def fuzz_evse_maximum_voltage(modes: dict) -> dict:
+def fuzz_evse_maximum_voltage(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse maximum voltage
 
     EVSEMaximumVoltage is complexType: PhysicalValueType.
     """
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["EVSEMaximumVoltage"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
+
     return fuzz_physical_value_type(
-        modes["EVSEMaximumVoltage"], unit_val=unitSymbolType.VOLT.value
+        modes["EVSEMaximumVoltage"],
+        unit_val=unitSymbolType.VOLT.value,
+        valid_values=valid_values["EVSEMaximumVoltage"],
     )
 
 
-def fuzz_evse_maximum_current(modes: dict) -> dict:
+def fuzz_evse_maximum_current(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse maximum current
 
     EVSEMaximumCurrent is complexType: PhysicalValueType.
     """
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["EVSEMaximumVoltage"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
     return fuzz_physical_value_type(
-        modes["EVSEMaximumCurrent"], unit_val=unitSymbolType.AMPERE.value
+        modes["EVSEMaximumCurrent"],
+        unit_val=unitSymbolType.AMPERE.value,
+        valid_values=valid_values["EVSEMaximumCurrent"],
     )
 
 
-def fuzz_evse_maximum_power(modes: dict) -> dict:
+def fuzz_evse_maximum_power(
+    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+) -> dict:
     """Fuzz evse maximum power
 
     EVSEMaximumPower is complexType: PhysicalValueType.
     """
+
+    if modes is None:
+        modes = {}
+    if valid_values is None:
+        valid_values = {}
+
+    for name in ["EVSEMaximumVoltage"]:
+        if name not in modes:
+            modes[name] = ParamFuzzMode.VALID.value
+        if name not in valid_values:
+            valid_values[name] = None
     return fuzz_physical_value_type(
-        modes["EVSEMaximumPower"], unit_val=unitSymbolType.WATT.value
+        modes["EVSEMaximumPower"],
+        unit_val=unitSymbolType.WATT.value,
+        valid_values=valid_values["EVSEMaximumPower"],
     )
