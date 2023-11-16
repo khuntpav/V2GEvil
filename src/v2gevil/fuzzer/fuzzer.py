@@ -82,16 +82,8 @@ class EVFuzzer:
         self.interface = interface
         self.mode = mode
         self.charging_mode = charging_mode
-        # TODO: Add loading the config file
-        # For messages names and first level parameters it will be
-        # handle in this class
-        # for parameters in deeper levels it will be handled by methods
-        # in fuzz_params.py, it params will be passed as dict to them
-        # every method will check if param is in dict and if yes
-        # then fuzz it depending on the value for that param in dict
         self.config_filename = config_filename
 
-    # TODO: think about what to fuzz, like what to add to the fuzzing_dict
     def fuzz(self, message_name: str = ""):
         """Fuzz EVSE response messages."""
         # Check which fuzzing mode is selected
@@ -130,14 +122,6 @@ class EVFuzzer:
             case _:
                 logger.error("Invalid fuzzing mode: %s", self.mode)
                 raise ValueError(f"Invalid fuzzing mode: {self.mode}")
-
-        # TODO: Add method if user wants to fuzz only one parameter in all messages
-        # Recursively find all parameters in all messages from default_dict and fuzz them
-        # => modify them and replace them in fuzzing_dict
-
-        # For that there is one problem: Not all parameters are set in default_dict
-        # but i don't know if it's possible to do with model_json_schema
-        # and recursivly iterate over schema and create new message with missing parameter
 
         # In the end station is started with fuzzing_dict instead of default_dict
         station.start_async(
@@ -195,7 +179,6 @@ class EVFuzzer:
         # Save custom dict to fuzzing_dict, then return
         # back to general fuzzing method
         self.load_fuzz_dict()
-        return
 
     def fuzz_message(self, message_name: str):
         """Fuzz only specified message in fuzzing_dict. Message is specified by message_name.

@@ -1,3 +1,5 @@
+"""Contains general method for fuzzing message"""
+
 import logging
 from typing import Optional
 
@@ -77,6 +79,8 @@ def general_msg_fuzzing_method(
     # Iterate through all parameters
     for name in msg_config.keys():
         # Check if it has valid_values dict in default_dict
+        # If first level parameter is not in default_dict
+        # also subparameters are not in default_dict
         if name not in msg_default_dict:
             valid_values = None
         else:
