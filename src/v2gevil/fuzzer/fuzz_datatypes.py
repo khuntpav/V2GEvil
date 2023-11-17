@@ -17,7 +17,7 @@ from ..messages.MsgDataTypes import (
     DC_EVSEStatusCodeType,
 )
 from .fuzzer_enums import ParamFuzzMode
-from .fuzz_types import (
+from .gen_types import (
     gen_random_string,
     gen_num,
     gen_invalid_bool,
