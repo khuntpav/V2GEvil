@@ -272,21 +272,13 @@ def fuzz_evse_id(
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
+    mode = get_attr_conf_mode(attr_conf, "EVSEID")
+    # After this attr_conf is not None and contains Mode key
+    assert attr_conf is not None
 
     if "Type" not in attr_conf:
         attr_conf["Type"] = "string"
-
     val_type = attr_conf["Type"]
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EVSEID fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -893,12 +885,114 @@ def fuzz_service_list(
     return res_dict
 
 
-# TODO:
 def fuzz_parameter_name(
     attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
-):
+) -> Union[str, int, float]:
+    """Fuzz parameter name. In standard is defined as xs:string"""
     # This is end parameter, so there is no passing None/{} to each sub parameter
     mode = get_attr_conf_mode(attr_conf, "Parameter Name")
+    # After this attr_conf is not None and contains Mode key
+    assert attr_conf is not None
+
+    if attr_conf["Mode"] == ParamFuzzMode.VALID:
+        if valid_values is None:
+            logger.warning(
+                "No valid value specified for Parameter Name, "
+                "using default valid value randomly chosen from "
+                "parameterType enum."
+            )
+            valid_values = random.choice(["Protocol", "Port"])
+
+    return gen_invalid_string(mode=mode, valid_val=valid_values)
+
+
+def fuzz_parameter_type(
+    attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
+) -> str:
+    """Fuzz parameter type, Mode can be valid or random."""
+
+    # Possible values for Parameter Type
+    value_types = [
+        "boolValue",
+        "byteValue",
+        "shortValue",
+        "intValue",
+        "physicalValue",
+        "stringValue",
+    ]
+
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Type")
+    # After this attr_conf is not None
+    assert attr_conf is not None
+
+    if mode == ParamFuzzMode.VALID:
+        if "value" not in attr_conf:
+            logger.warning(
+                "No valid value specified for Parameter Type, "
+                "using default valid value randomly chosen from "
+                "parameterType enum."
+            )
+            value_type = random.choice(value_types)
+        value_type = attr_conf["value"]
+    else:
+        value_type = random.choice(value_types)
+
+    if value_type not in value_types:
+        logger.warning("Invalid value type for Parameter, using random mode.")
+        value_type = random.choice(value_types)  # => value_type is valid
+
+    return value_type
+
+
+def fuzz_parameter_bool_value(
+    attr_conf: Optional[dict] = None, valid_values: Optional[bool] = None
+):
+    """Fuzz parameter boolValue"""
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Value")
+
+    return gen_invalid_bool(mode=mode)
+
+
+def fuzz_parameter_byte_value(
+    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
+):
+    """Fuzz parameter byteValue"""
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Value")
+
+    return gen_invalid_byte(mode=mode, valid_val=valid_values)
+
+
+def fuzz_parameter_short_value(
+    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
+):
+    """Fuzz parameter shortValue"""
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Value")
+
+    return gen_invalid_short(mode=mode, valid_val=valid_values)
+
+
+def fuzz_parameter_int_value(
+    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
+):
+    """Fuzz parameter intValue"""
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Value")
+
+    return gen_invalid_int(mode=mode, valid_val=valid_values)
+
+
+def fuzz_parameter_string_value(
+    attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
+):
+    """Fuzz parameter stringValue"""
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Value")
+
+    return gen_invalid_string(mode=mode, valid_val=valid_values)
 
 
 def fuzz_parameter(
@@ -909,83 +1003,47 @@ def fuzz_parameter(
     Parameter is complex type, so it has attributes and elements.
     In XSD defined as: parameterType.
     """
-    if modes is None:
-        modes = {}
-    if valid_values is None:
-        valid_values = {}
 
-    for name in ["Name", "Type", "Value"]:
-        # Attribute is not specified in config dict => don't fuzz it
-        # => valid mode
-        if name not in modes:
-            modes[name] = ParamFuzzMode.VALID.value
-        if name not in valid_values:
-            valid_values[name] = None
+    pairs_name_method = {
+        "@Name": fuzz_parameter_name,
+        "boolValue": fuzz_parameter_bool_value,
+        "byteValue": fuzz_parameter_byte_value,
+        "shortValue": fuzz_parameter_short_value,
+        "intValue": fuzz_parameter_int_value,
+        "physicalValue": fuzz_physical_value_type,
+        "stringValue": fuzz_parameter_string_value,
+    }
+    required_fields = ["@Name"]
+    all_fields = ["@Name"]
 
-    # Covert mode for Name to enum
-    try:
-        modes["Name"] = ParamFuzzMode(modes["Name"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for Parameter, using random mode."
-        )
-        modes["Name"] = ParamFuzzMode.RANDOM
+    # Based on type add value_type to pairs_name_method
 
-    # Name is attribute in XSD => @Name
-    # type xs:string
-    name = gen_invalid_string(
-        mode=modes["Name"], valid_val=valid_values["Name"]
+    # Only in conf is "Name", but in XSD is attribute not element
+    # therefor change it to @Name
+    if attr_conf is None:
+        attr_conf = {}
+    if "Name" in attr_conf:
+        attr_conf["@Name"] = attr_conf.pop("Name")
+
+    value_type = fuzz_parameter_type(attr_conf=attr_conf["Type"])
+    required_fields.append(value_type)
+    all_fields.append(value_type)
+    attr_conf.pop("Type")
+    attr_conf[value_type] = attr_conf.pop("Value")
+    # After this in attr_conf is only @Name and value_type
+    # value_type is one of the value_types => for ex.:
+    # attr_conf {"@Name": "Port", "intValue": 12}
+
+    res_dict = {}
+    # Call general method for fuzzing complexType
+    res_dict = general_datatype_fuzzing_method(
+        required_fields=required_fields,
+        all_fields=all_fields,
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        pairs_name_method=pairs_name_method,
     )
-
-    value_types = [
-        "boolValue",
-        "byteValue",
-        "shortValue",
-        "intValue",
-        "physicalValue",
-        "stringValue",
-    ]
-    # Choose type
-    value_type = modes["Type"]
-
-    # First check if random or valid mode
-    if value_type in [ParamFuzzMode.RANDOM, ParamFuzzMode.VALID]:
-        value_type = random.choice(value_types)  # => value_type is valid
-
-    if value_type not in value_types:
-        logger.warning("Invalid value type for Parameter, using random mode.")
-        value_type = random.choice(value_types)  # => value_type is valid
-
-    # Convert mode for Value to enum
-    try:
-        modes["Value"] = ParamFuzzMode(modes["Value"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for Parameter, using random mode."
-        )
-        modes["Value"] = ParamFuzzMode.RANDOM
-
-    # So the value_type is for sure from value_types
-    # raise ValueError should not be possible
-    # Generated value based on type
-    match value_type:
-        case "boolValue":
-            value = gen_invalid_bool(mode=modes["Value"])
-        case "byteValue":
-            value = gen_invalid_byte(mode=modes["Value"])
-        case "shortValue":
-            value = gen_invalid_short(mode=modes["Value"])
-            # xs:int, -2147483648 - 2147483647
-        case "intValue":
-            value = gen_invalid_int(mode=modes["Value"])
-        case "physicalValue":
-            value = fuzz_physical_value_type(modes=modes["physicalValue"])
-        case "stringValue":
-            value = gen_invalid_string(mode=modes["Value"])
-        case _:
-            raise ValueError("Invalid value type for Parameter.")
-
-    return {"@Name": name, value_type: value}
+    return res_dict
 
 
 def fuzz_parameter_set_id(
@@ -1087,8 +1145,9 @@ def fuzz_gen_challenge(
             # Generate base64 binary with length < 16
             return gen_invalid_base64_binary(min_length=16)
         case ParamFuzzMode.SPECIAL_BASE64:
-            # TODO: use of valid base64 binary and append invalid chars to it
-            return gen_malicous_base64()
+            if valid_values is None:
+                valid_values = gen_invalid_base64_binary(length=16)
+            return gen_malicous_base64(valid_base64=valid_values)
         case ParamFuzzMode.INT:
             return gen_num()
         case ParamFuzzMode.NEGATIVE_INT:
@@ -1159,13 +1218,9 @@ def fuzz_evse_processing(
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
-            # TODO: Add some valid value at the start and append invalid chars to it
-            # like EVSEProcessingType.FINISHED.value + r"!@*!*@#" or something like that
-            # malicious_string = gen_malicous_string()
-            # invalid_enum = (
-            #    random.choice(list(EVSEProcessingType)).value + malicious_string
-            # )
-            return gen_malicous_string()
+            if valid_values is None:
+                valid_values = random.choice(list(EVSEProcessingType)).value
+            return gen_malicous_string(valid_string=valid_values)
         case ParamFuzzMode.INT:
             return gen_num()
         case ParamFuzzMode.NEGATIVE_INT:
@@ -1582,14 +1637,9 @@ def fuzz_sales_tariff(
         "NumEPriceLevels": fuzz_num_e_price_levels,
         "SalesTariffEntry": fuzz_sales_tariff_entry,
     }
-    # TODO: modify general value to handle @Id from config
-    # because in config cannot be @ sign, in config only Id
-    # valid values are taken from msg_default_dict => "@Id" is key
-    # but in config file is "Id" key without @, so i have to change
-    # it in config file to "@Id" and then it will work
     if attr_conf and "Id" in attr_conf:
         attr_conf["@Id"] = attr_conf.pop("Id")
-    # TODO: Same for @Name in another fuzzing method
+
     required_fields = ["@Id", "SalesTariffID", "SalesTariffEntry"]
     all_fields = [
         "@Id",

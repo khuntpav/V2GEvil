@@ -148,6 +148,12 @@ def gen_malicous_string(valid_string: str = "") -> str:
     # TODO: Should i also add some more sophisticated invalid values?
     # like string with special meaning some known escaping with bash commands
     # or something like that? Based on what will be chosen invalid value
+    # TODO: Add some valid value at the start and append invalid chars to it
+    # like responseCodeType.OK.value + r"!@*!*@#" or something like that
+    # malicious_string = gen_malicous_string()
+    # invalid_enum = (
+    #    random.choice(list(responseCodeType)).value + malicious_string
+    # )
 
     raise NotImplementedError
 
@@ -217,6 +223,7 @@ def gen_invalid_int(
     mode: ParamFuzzMode = ParamFuzzMode.RANDOM,
     min_val: Optional[int] = None,
     max_val: Optional[int] = None,
+    valid_val: Optional[int] = None,
 ) -> Union[str, int, float]:
     """Generate invalid xs:int (type in XML schema)
 
@@ -224,6 +231,20 @@ def gen_invalid_int(
     """
 
     match mode:
+        case ParamFuzzMode.VALID:
+            if min_val is None:
+                min_val = -2147483648
+            if max_val is None:
+                max_val = 2147483647
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for xs:int, "
+                    "using valid value randomly generated."
+                    "Disclaimer: Generated value - meets the conditions for length "
+                    "and type but may not meet the valid value for particular parameter."
+                )
+                return random.randint(min_val, max_val)
+            return valid_val
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
