@@ -38,9 +38,12 @@ from .fuzz_types import (
     gen_invalid_id,
 )
 
+
 logger = logging.getLogger(__name__)
 
 
+# TODO: Convert all fuzz enum methods to use gen_invalid_string
+# pass something like possible_values from enum fuzz method to gen_invalid_string
 def fuzz_enum_type(attr_conf: Optional[dict] = None) -> Union[str, int, float]:
     """Fuzz enum type
 
@@ -50,8 +53,25 @@ def fuzz_enum_type(attr_conf: Optional[dict] = None) -> Union[str, int, float]:
     Relevant modes: random, string, special-string,
         int, negative-int, float, negative-float
     """
-    # TODO:
     raise NotImplementedError
+
+
+def get_attr_conf_mode(
+    attr_conf: Optional[dict] = None, attr_name: str = ""
+) -> ParamFuzzMode:
+    """Get fuzzing mode for attribute/field/parameter
+    (these are used interchangeably)"""
+
+    attr_conf = check_attr_conf_mode(attr_conf)
+    try:
+        mode = ParamFuzzMode(attr_conf["Mode"])
+    except ValueError:
+        logger.warning(
+            "Invalid fuzzing mode for %s, using random mode.", attr_name
+        )
+        mode = ParamFuzzMode.RANDOM
+
+    return mode
 
 
 def general_datatype_fuzzing_method(
@@ -142,20 +162,12 @@ def fuzz_schema_id(
     Relevant modes: random, string, int, over-int,
         under-int, float, over-float, under-float
     """
-    # TODO: IMPORTANT
+
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
     # attr_conf == {}
-    attr_conf = check_attr_conf_mode(attr_conf)
 
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for schemaID fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "SchemaID")
 
     return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_values)
 
@@ -175,16 +187,7 @@ def fuzz_response_code(
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
     # attr_conf == {}
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ResponseCode fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ResponseCode")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -199,13 +202,14 @@ def fuzz_response_code(
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
-            # TODO: Add some valid value at the start and append invalid chars to it
-            # like responseCodeType.OK.value + r"!@*!*@#" or something like that
-            # malicious_string = gen_malicous_string()
-            # invalid_enum = (
-            #    random.choice(list(responseCodeType)).value + malicious_string
-            # )
-            return gen_malicous_string()
+            if valid_values is None:
+                logger.warning(
+                    "No valid value specified for ResponseCode, "
+                    "using default valid value randomly chosen from "
+                    "responseCodeType enum."
+                )
+                valid_values = random.choice(list(responseCodeType)).value
+            return gen_malicous_string(valid_string=valid_values)
         case ParamFuzzMode.INT:
             return gen_num()
         case ParamFuzzMode.NEGATIVE_INT:
@@ -387,25 +391,9 @@ def fuzz_evse_timestamp(
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Coverting mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EVSETimestamp fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSETimestamp")
 
     return gen_invalid_long(mode=mode, valid_val=valid_values)
-
-
-# TODO: For complexType, create fuzz method for each element
-# => for every simpleType create fuzz method
-# This can be a hack for fuzzing only specific elements of complexType
-# can be used like accepting names of elements as parameters
-# and based on that fuzz only specific elements
 
 
 def fuzz_payment_option(
@@ -418,16 +406,7 @@ def fuzz_payment_option(
         Contract, ExternalPayment
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for PaymentOption fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "PaymentOption")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -511,16 +490,7 @@ def fuzz_energy_transfer_mode(
     EnergyTransferMode enum values.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Conver mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EnergyTransferMode fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EnergyTransferMode")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -650,16 +620,7 @@ def fuzz_service_id(
     """
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ServiceID fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ServiceID")
 
     return gen_invalid_unsigned_short(mode=mode, valid_val=valid_values)
 
@@ -672,16 +633,7 @@ def fuzz_service_name(
     ServiceName is type xs:string (in xml schema), (maxLength: 32).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ServiceName fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ServiceName")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -745,16 +697,7 @@ def fuzz_service_category(
         EVCharging, Internet, ContractCertificate, OtherCustom
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ServiceCategory fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ServiceCategory")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -815,16 +758,7 @@ def fuzz_service_scope(
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ServiceName fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ServiceScope")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -884,16 +818,7 @@ def fuzz_free_service(
     """Fuzz free service"""
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for FreeService fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "FreeService")
 
     return gen_invalid_bool(mode=mode)
 
@@ -968,9 +893,16 @@ def fuzz_service_list(
     return res_dict
 
 
-# TODO
+# TODO:
+def fuzz_parameter_name(
+    attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
+):
+    # This is end parameter, so there is no passing None/{} to each sub parameter
+    mode = get_attr_conf_mode(attr_conf, "Parameter Name")
+
+
 def fuzz_parameter(
-    modes: Optional[dict] = None, valid_values: Optional[dict] = None
+    attr_conf: Optional[dict] = None, valid_values: Optional[dict] = None
 ) -> dict:
     """Fuzz parameter
 
@@ -1061,15 +993,7 @@ def fuzz_parameter_set_id(
 ):
     """Fuzz ParameterSetID"""
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for ParameterSetID. Using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ParameterSetID")
 
     return gen_invalid_short(mode=mode, valid_val=valid_values)
 
@@ -1141,20 +1065,13 @@ def fuzz_gen_challenge(
     Example: 'U29tZSBSYW5kb20gRGF0YQ==' => 'Some Random Data'
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
+    mode = get_attr_conf_mode(attr_conf, "GenChallenge")
 
     # str to base64 encoding => str to bytes => bytes to base64 encoding
     # base64.b64encode(str.encode('utf-8')) or base64.b64encode(bytes(str, 'utf-8'))
     # base64 to str => base64 to bytes => bytes to str
     # base64.b64decode(base64_encoded_str).decode('utf-8')
     # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for GenChallenge, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -1227,16 +1144,7 @@ def fuzz_evse_processing(
     Fuzzer should test values out of enum values.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for EVSEProcessing, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSEProcessing")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -1298,15 +1206,7 @@ def fuzz_start_timeinterval(
     """Fuzz start parameter of time interval"""
 
     # This is end parameter, so there is passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    try:
-        start_mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for TimeInterval, using random mode."
-        )
-        start_mode = ParamFuzzMode.RANDOM
+    start_mode = get_attr_conf_mode(attr_conf, "Start of time interval")
 
     # start, xs:unsignedInt, minInclusive value="0", maxInclusive value="16777214"
     start = gen_invalid_unsigned_int(
@@ -1325,15 +1225,7 @@ def fuzz_duration_timeinterval(
     """Fuzz duration parameter of time interval"""
 
     # This is end parameter, so there is passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    try:
-        duration_mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for TimeInterval, using random mode."
-        )
-        duration_mode = ParamFuzzMode.RANDOM
+    duration_mode = get_attr_conf_mode(attr_conf, "Duration of time interval")
 
     # duration, xs:unsignedInt, minInclusive value="0", maxInclusive value="86400"
     duration = gen_invalid_unsigned_int(
@@ -1438,14 +1330,7 @@ def fuzz_id(
 ) -> Union[str, int, float]:
     """Fuzz Id"""
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning("Invalid fuzzing mode for Id, using random mode.")
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "Id")
 
     return gen_invalid_id(mode=mode, valid_val=valid_values)
 
@@ -1459,16 +1344,7 @@ def fuzz_sales_tariff_id(
         minInclusive value="1", maxInclusive value="255", valid values: 1-255
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for SalesTariffID, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "SalesTariffID")
 
     return gen_invalid_unsigned_byte(
         mode=mode, min_val=1, max_val=255, valid_val=valid_values
@@ -1476,23 +1352,14 @@ def fuzz_sales_tariff_id(
 
 
 def fuzz_sales_tariff_description(
-    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
+    attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
 ) -> Union[str, int, float]:
     """Fuzz sales tariff description
 
     SalesTariffDescription is type xs:string (in xml schema), (maxLength: 32).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for SalesTariffDescription, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "SalesTariffDescription")
 
     return gen_invalid_string(mode=mode, max_len=32, valid_val=valid_values)
 
@@ -1505,16 +1372,7 @@ def fuzz_num_e_price_levels(
     NumEPriceLevels is type xs:unsignedByte (in xml schema)
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for NumEPriceLevels, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "NumEPriceLevels")
 
     # TODO: maybe add only valid value = 1 => 1 EPriceLevel
 
@@ -1529,23 +1387,10 @@ def fuzz_e_price_level(
     EPriceLevel is type xs:unsignedByte (in xml schema)
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for EPriceLevel, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EPriceLevel")
 
     # TODO: maybe add only valid value = 1 => 1 EPriceLevel
     return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_values)
-
-
-# TODO: Convert all fuzz enum methods to use gen_invalid_string
-# pass something like possible_values from enum fuzz method to gen_invalid_string
 
 
 def fuzz_cost_kind(
@@ -1556,14 +1401,7 @@ def fuzz_cost_kind(
     costKind is enum, so valid value is one of the enum values costKindType.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning("Invalid fuzzing mode for CostKind, using random mode.")
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "costKind")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -1612,14 +1450,7 @@ def fuzz_amount(
     amount is type xs:unsignedInt (in xml schema)
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning("Invalid fuzzing mode for amount, using random mode.")
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "amount")
 
     return gen_invalid_unsigned_int(mode=mode, valid_val=valid_values)
 
@@ -1633,16 +1464,7 @@ def fuzz_amount_multiplier(
         minInclusive value="-3", maxInclusive value="3"
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for amountMultiplier, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "amountMultiplier")
 
     return gen_invalid_byte(
         mode=mode, min_val=-3, max_val=3, valid_val=valid_values
@@ -1760,6 +1582,14 @@ def fuzz_sales_tariff(
         "NumEPriceLevels": fuzz_num_e_price_levels,
         "SalesTariffEntry": fuzz_sales_tariff_entry,
     }
+    # TODO: modify general value to handle @Id from config
+    # because in config cannot be @ sign, in config only Id
+    # valid values are taken from msg_default_dict => "@Id" is key
+    # but in config file is "Id" key without @, so i have to change
+    # it in config file to "@Id" and then it will work
+    if attr_conf and "Id" in attr_conf:
+        attr_conf["@Id"] = attr_conf.pop("Id")
+    # TODO: Same for @Name in another fuzzing method
     required_fields = ["@Id", "SalesTariffID", "SalesTariffEntry"]
     all_fields = [
         "@Id",
@@ -2017,16 +1847,7 @@ def fuzz_notification_max_delay(
     NotificationMaxDelay is type xs:unsignedShort
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for NotificationMaxDelay, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "NotificationMaxDelay")
 
     return gen_invalid_unsigned_short(mode=mode, valid_val=valid_values)
 
@@ -2039,16 +1860,7 @@ def fuzz_evse_notification(
     EVSENotification type is enum, so valid value is one of the enum values EVSENotificationType.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for EVSENotification, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSENotification")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -2095,14 +1907,7 @@ def fuzz_rcd(
     """Fuzz RCD"""
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning("Invalid fuzzing mode for RCD, using random mode.")
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "RCD")
 
     # TODO: Valid val is True or False, not used valid_val for now
     return gen_invalid_bool(mode=mode)
@@ -2138,15 +1943,7 @@ def fuzz_evse_isolation_status(
     """Fuzz evse isolation status"""
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for EVSEIsolationStatus, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSEIsolationStatus")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -2195,15 +1992,7 @@ def fuzz_dc_evse_status_code(
     DC_EVSEStatusCode is enum, so valid value is one of the enum values DC_EVSEStatusCodeType.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for DC_EVSEStatusCode, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "DC_EVSEStatusCode")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -2349,15 +2138,7 @@ def fuzz_sa_schedule_tuple_id(
     short in semantics and type definition for some messages in ISO15118-2.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for SAScheduleTupleID, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "SAScheduleTupleID")
 
     return gen_invalid_unsigned_byte(
         mode=mode, min_val=1, max_val=255, valid_val=valid_values
@@ -2420,12 +2201,14 @@ def fuzz_unit(
         case ParamFuzzMode.STRING:
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
-            # TODO: Add something like valid string (maybe some random choice
-            # from valid values)
-            # and that pass to gen_malicous_string method
-            # that method will append some invalid chars to valid string
-            # valid_value = unit_val
-            return gen_malicous_string()
+            if valid_val is None:
+                logger.warning(
+                    "No valid value specified for Unit, "
+                    "using default valid value randomly chosen from "
+                    "unitSymbolType enum."
+                )
+                valid_val = random.choice(list(unitSymbolType)).value
+            return gen_malicous_string(valid_string=valid_val)
         case ParamFuzzMode.INT:
             return gen_num()
         case ParamFuzzMode.NEGATIVE_INT:
@@ -2536,15 +2319,7 @@ def fuzz_meter_id(
     MeterID is type xs:unsignedByte (in xml schema).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for MeterID fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "MeterID")
 
     return gen_invalid_unsigned_byte(mode=mode, valid_val=valid_values)
 
@@ -2557,15 +2332,7 @@ def fuzz_meter_reading(
     MeterReading is type xs:unsignedLong (in xml schema).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for MeterReading fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "MeterReading")
 
     return gen_invalid_unsigned_long(mode=mode, valid_val=valid_values)
 
@@ -2578,15 +2345,7 @@ def fuzz_sig_meter_reading(
     SigMeterReading is type xs:base64Binary, maxLength 64.
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for SigMeterReading, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "SigMeterReading")
 
     match mode:
         case ParamFuzzMode.VALID:
@@ -2653,18 +2412,9 @@ def fuzz_meter_status(
     MeterStatus is type xs:short (in xml schema).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode for MeterStatus, using random mode."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "MeterStatus")
 
     # xs:short => valid values: -32768 to 32767
-
     return gen_invalid_short(mode=mode, valid_val=valid_values)
 
 
@@ -2676,13 +2426,7 @@ def fuzz_t_meter(
     TMeter is type xs:long (in xml schema).
     """
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning("Invalid fuzzing mode for TMeter, using random mode.")
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "TMeter")
 
     return gen_invalid_long(mode=mode, valid_val=valid_values)
 
@@ -2739,15 +2483,7 @@ def fuzz_receipt_required(
     """
     # valid_values is not used, but have to be there because of general method
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for ReceiptRequired fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "ReceiptRequired")
 
     return gen_invalid_bool(mode=mode)
 
@@ -2791,15 +2527,7 @@ def fuzz_evse_current_limit_achieved(
     """
     # valid_values is not used, but have to be there because of general method
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EVSECurrentLimitAchieved fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSECurrentLimitAchieved")
 
     return gen_invalid_bool(mode=mode)
 
@@ -2813,15 +2541,7 @@ def fuzz_evse_voltage_limit_achieved(
     """
     # valid_values is not used, but have to be there because of general method
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EVSEVoltageLimitAchieved fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSEVoltageLimitAchieved")
     return gen_invalid_bool(mode=mode)
 
 
@@ -2834,15 +2554,7 @@ def fuzz_evse_power_limit_achieved(
     """
     # valid_values is not used, but have to be there because of general method
     # This is end parameter, so there is no passing None/{} to each sub parameter
-    attr_conf = check_attr_conf_mode(attr_conf)
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(attr_conf["Mode"])
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for EVSEPowerLimitAchieved fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
+    mode = get_attr_conf_mode(attr_conf, "EVSEPowerLimitAchieved")
     return gen_invalid_bool(mode=mode)
 
 
