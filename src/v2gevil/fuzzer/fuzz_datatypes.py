@@ -42,9 +42,11 @@ from .fuzz_types import (
 logger = logging.getLogger(__name__)
 
 
-# TODO: Convert all fuzz enum methods to use gen_invalid_string
-# pass something like possible_values from enum fuzz method to gen_invalid_string
-def fuzz_enum_type(attr_conf: Optional[dict] = None) -> Union[str, int, float]:
+def fuzz_general_enum_type(
+    attr_conf: Optional[dict] = None,
+    valid_values: Optional[str] = None,
+    enum_list: Optional[list] = None,
+) -> Union[str, int, float]:
     """Fuzz enum type
 
     Enum type is xs:string, so valid value is string.
@@ -53,7 +55,58 @@ def fuzz_enum_type(attr_conf: Optional[dict] = None) -> Union[str, int, float]:
     Relevant modes: random, string, special-string,
         int, negative-int, float, negative-float
     """
-    raise NotImplementedError
+    if enum_list is None or len(enum_list) == 0:
+        raise ValueError("enum_list is None or empty list")
+    enum_name = enum_list[0].__class__.__name__
+
+    mode = get_attr_conf_mode(attr_conf, enum_name)
+
+    match mode:
+        case ParamFuzzMode.VALID:
+            if valid_values is None:
+                logger.warning(
+                    "No valid value specified for type %s, "
+                    "using default valid value randomly chosen from "
+                    "%s enum.",
+                    enum_name,
+                    enum_name,
+                )
+                return random.choice(enum_list).value
+            return valid_values
+        case ParamFuzzMode.STRING:
+            return gen_random_string(random.randint(1, 100))
+        case ParamFuzzMode.SPECIAL_STRING:
+            if valid_values is None:
+                logger.warning(
+                    "No valid value specified for ResponseCode, "
+                    "using default valid value randomly chosen from "
+                    "responseCodeType enum."
+                )
+                valid_values = random.choice(enum_list).value
+            return gen_malicous_string(valid_string=valid_values)
+        case ParamFuzzMode.INT:
+            return gen_num()
+        case ParamFuzzMode.NEGATIVE_INT:
+            return gen_num(negative_flag=True)
+        case ParamFuzzMode.FLOAT:
+            return gen_num(float_flag=True)
+        case ParamFuzzMode.NEGATIVE_FLOAT:
+            return gen_num(float_flag=True, negative_flag=True)
+        case _:
+            if mode is not ParamFuzzMode.RANDOM:
+                logger.warning(
+                    "Invalid fuzzing mode for parameter with type "
+                    "%s, using random mode.",
+                    enum_name,
+                )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
 
 
 def get_attr_conf_mode(
@@ -184,62 +237,12 @@ def fuzz_response_code(
     Relevant modes: random, string, special-string,
         int, negative-int, float, negative-float
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    # => fuzz with random mode for end parameter
-    # attr_conf == {}
-    mode = get_attr_conf_mode(attr_conf, "ResponseCode")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for ResponseCode, "
-                    "using default valid value randomly chosen from "
-                    "responseCodeType enum."
-                )
-                return random.choice(list(responseCodeType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for ResponseCode, "
-                    "using default valid value randomly chosen from "
-                    "responseCodeType enum."
-                )
-                valid_values = random.choice(list(responseCodeType)).value
-            return gen_malicous_string(valid_string=valid_values)
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "responseCodeType, using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(responseCodeType),
+    )
 
 
 def fuzz_evse_id(
@@ -397,56 +400,12 @@ def fuzz_payment_option(
     Valid values are defined in paymentOptionType enum:
         Contract, ExternalPayment
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "PaymentOption")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for PaymentOption, "
-                    "using default valid value randomly chosen from "
-                    "paymentOptionType enum."
-                )
-                return random.choice(list(paymentOptionType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "paymentOptionType, using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            special_string = gen_malicous_string()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-
-            return random.choice(
-                [
-                    invalid_string,
-                    special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(paymentOptionType),
+    )
 
 
 # Here is not mode, but modes, because keep of consistency with other methods
@@ -481,56 +440,12 @@ def fuzz_energy_transfer_mode(
 
     EnergyTransferMode enum values.
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "EnergyTransferMode")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for EnergyTransferMode, "
-                    "using default valid value randomly chosen from "
-                    "energyTransferModeType enum."
-                )
-                return random.choice(list(EnergyTransferModeType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "energyTransferModeType, using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            special_string = gen_malicous_string()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-
-            return random.choice(
-                [
-                    invalid_string,
-                    special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(EnergyTransferModeType),
+    )
 
 
 def fuzz_supported_energy_transfer_mode(
@@ -688,56 +603,12 @@ def fuzz_service_category(
     xs:string, enum, valid values are:
         EVCharging, Internet, ContractCertificate, OtherCustom
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "ServiceCategory")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for ServiceCategory, "
-                    "using default valid value randomly chosen from "
-                    "serviceCategoryType enum."
-                )
-                return random.choice(list(serviceCategoryType)).value
-
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "serviceCategoryType, using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                negative_flag=True, float_flag=True
-            )
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(serviceCategoryType),
+    )
 
 
 def fuzz_service_scope(
@@ -899,7 +770,7 @@ def fuzz_parameter_name(
             logger.warning(
                 "No valid value specified for Parameter Name, "
                 "using default valid value randomly chosen from "
-                "parameterType enum."
+                "parameter name examples from standard."
             )
             valid_values = random.choice(["Protocol", "Port"])
 
@@ -931,7 +802,7 @@ def fuzz_parameter_type(
             logger.warning(
                 "No valid value specified for Parameter Type, "
                 "using default valid value randomly chosen from "
-                "parameterType enum."
+                "possible values for parameter type."
             )
             value_type = random.choice(value_types)
         value_type = attr_conf["value"]
@@ -1166,30 +1037,19 @@ def fuzz_gen_challenge(
                     "Invalid fuzzing mode for parameter with type "
                     "base64Binary, using random mode."
                 )
-            longer_base64 = gen_invalid_base64_binary(max_length=16)
-            shorter_base64 = gen_invalid_base64_binary(min_length=16)
-            special_base64 = gen_malicous_base64()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                negative_flag=True, float_flag=True
-            )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            return random.choice(
-                [
-                    longer_base64,
-                    shorter_base64,
-                    special_base64,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                    invalid_string,
-                    invalid_special_string,
-                ]
-            )
+            invalid_values = [
+                gen_invalid_base64_binary(length=16),
+                gen_invalid_base64_binary(max_length=16),
+                gen_invalid_base64_binary(min_length=16),
+                gen_malicous_base64(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+            ]
+            return random.choice(invalid_values)
 
 
 def fuzz_evse_processing(
@@ -1202,57 +1062,12 @@ def fuzz_evse_processing(
     Type EVSEProcessingType is defined in MsgDataTypes.py.
     Fuzzer should test values out of enum values.
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "EVSEProcessing")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for EVSEProcessing, "
-                    "using default valid value randomly chosen from "
-                    "EVSEProcessingType enum."
-                )
-                return random.choice(list(EVSEProcessingType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            if valid_values is None:
-                valid_values = random.choice(list(EVSEProcessingType)).value
-            return gen_malicous_string(valid_string=valid_values)
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "EVSEProcessingType, using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                negative_flag=True, float_flag=True
-            )
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(EVSEProcessingType),
+    )
 
 
 def fuzz_start_timeinterval(
@@ -1449,52 +1264,18 @@ def fuzz_e_price_level(
 
 
 def fuzz_cost_kind(
-    attr_conf: Optional[dict] = None, valid_values: Optional[int] = None
+    attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
 ) -> Union[str, int, float]:
     """Fuzz cost kind
 
     costKind is enum, so valid value is one of the enum values costKindType.
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "costKind")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for CostKind, "
-                    "using default valid value randomly chosen from "
-                    "costKindType enum."
-                )
-                return random.choice(list(costKindType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "costKindType, using random mode."
-                )
-            invalid_values = [
-                gen_random_string(random.randint(1, 100)),
-                gen_malicous_string(),
-                gen_num(),
-                gen_num(negative_flag=True),
-                gen_num(float_flag=True),
-                gen_num(float_flag=True, negative_flag=True),
-            ]
-            return random.choice(invalid_values)
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(costKindType),
+    )
 
 
 def fuzz_amount(
@@ -1909,46 +1690,12 @@ def fuzz_evse_notification(
 
     EVSENotification type is enum, so valid value is one of the enum values EVSENotificationType.
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "EVSENotification")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for EVSENotification,"
-                    "using default valid value randomly chosen "
-                    "from EVSENotificationType enum."
-                )
-                return random.choice(list(EVSENotificationType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "EVSENotificationType, using random mode."
-                )
-            invalid_values = [
-                gen_random_string(random.randint(1, 100)),
-                gen_malicous_string(),
-                gen_num(),
-                gen_num(negative_flag=True),
-                gen_num(float_flag=True),
-                gen_num(float_flag=True, negative_flag=True),
-            ]
-            return random.choice(invalid_values)
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(EVSENotificationType),
+    )
 
 
 def fuzz_rcd(
@@ -1990,48 +1737,15 @@ def fuzz_ac_evse_status(
 def fuzz_evse_isolation_status(
     attr_conf: Optional[dict] = None, valid_values: Optional[str] = None
 ) -> Union[str, int, float]:
-    """Fuzz evse isolation status"""
+    """Fuzz evse isolation status
 
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "EVSEIsolationStatus")
-
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for EVSEIsolationStatus,"
-                    "using default valid value randomly chosen "
-                    "from EVSEIsolationStatusType enum."
-                )
-                return random.choice(list(isolationLevelType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "EVSEIsolationStatusType, using random mode."
-                )
-            invalid_values = [
-                gen_random_string(random.randint(1, 100)),
-                gen_malicous_string(),
-                gen_num(),
-                gen_num(negative_flag=True),
-                gen_num(float_flag=True),
-                gen_num(float_flag=True, negative_flag=True),
-            ]
-            return random.choice(invalid_values)
+    type enum (isolationLevelType)
+    """
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(isolationLevelType),
+    )
 
 
 def fuzz_dc_evse_status_code(
@@ -2041,46 +1755,12 @@ def fuzz_dc_evse_status_code(
 
     DC_EVSEStatusCode is enum, so valid value is one of the enum values DC_EVSEStatusCodeType.
     """
-    # This is end parameter, so there is no passing None/{} to each sub parameter
-    mode = get_attr_conf_mode(attr_conf, "DC_EVSEStatusCode")
 
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_values is None:
-                logger.warning(
-                    "No valid value specified for DC_EVSEStatusCode,"
-                    "using default valid value randomly chosen "
-                    "from DC_EVSEStatusCodeType enum."
-                )
-                return random.choice(list(DC_EVSEStatusCodeType)).value
-            return valid_values
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            return gen_malicous_string()
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "DC_EVSEStatusCodeType, using random mode."
-                )
-            invalid_values = [
-                gen_random_string(random.randint(1, 100)),
-                gen_malicous_string(),
-                gen_num(),
-                gen_num(negative_flag=True),
-                gen_num(float_flag=True),
-                gen_num(float_flag=True, negative_flag=True),
-            ]
-            return random.choice(invalid_values)
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_values,
+        enum_list=list(DC_EVSEStatusCodeType),
+    )
 
 
 def fuzz_dc_evse_status(
@@ -2224,73 +1904,17 @@ def fuzz_unit(
 ) -> Union[str, int, float]:
     """Fuzz unit
 
-    Unit, unitSymbolType, enumeration, possible values:
+    Unit is enum (unitSymbolType), possible values:
     HOURS = "h", MINUTES = "m", SECONDS = "s", AMPERE = "A",
     VOLT = "V", WATT = "W", WATT_HOUR = "Wh".
     """
+    attr_conf = {"Mode": mode}
 
-    # Convert mode to enum
-    try:
-        mode = ParamFuzzMode(mode)
-    except ValueError:
-        logger.warning(
-            "Invalid fuzzing mode. Using random mode for Unit fuzzing."
-        )
-        mode = ParamFuzzMode.RANDOM
-
-    match mode:
-        case ParamFuzzMode.VALID:
-            if valid_val is None:
-                logger.warning(
-                    "No valid value specified for Unit, "
-                    "using default valid value randomly chosen from "
-                    "unitSymbolType enum."
-                )
-                return random.choice(list(unitSymbolType)).value
-            return valid_val
-        case ParamFuzzMode.STRING:
-            return gen_random_string(random.randint(1, 100))
-        case ParamFuzzMode.SPECIAL_STRING:
-            if valid_val is None:
-                logger.warning(
-                    "No valid value specified for Unit, "
-                    "using default valid value randomly chosen from "
-                    "unitSymbolType enum."
-                )
-                valid_val = random.choice(list(unitSymbolType)).value
-            return gen_malicous_string(valid_string=valid_val)
-        case ParamFuzzMode.INT:
-            return gen_num()
-        case ParamFuzzMode.NEGATIVE_INT:
-            return gen_num(negative_flag=True)
-        case ParamFuzzMode.FLOAT:
-            return gen_num(float_flag=True)
-        case ParamFuzzMode.NEGATIVE_FLOAT:
-            return gen_num(float_flag=True, negative_flag=True)
-        case _:
-            if mode is not ParamFuzzMode.RANDOM:
-                logger.warning(
-                    "Invalid fuzzing mode for parameter with type "
-                    "unitSymbolType (enumeration), using random mode."
-                )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+    return fuzz_general_enum_type(
+        attr_conf=attr_conf,
+        valid_values=valid_val,
+        enum_list=list(unitSymbolType),
+    )
 
 
 def fuzz_value(
@@ -2402,8 +2026,7 @@ def fuzz_sig_meter_reading(
             if valid_values is None:
                 logger.warning(
                     "No valid value specified for SigMeterReading,"
-                    "using default valid value randomly chosen "
-                    "from EVSENotificationType enum."
+                    "using random value - 1-64 bytes long, base64Binary"
                 )
                 return random.randbytes(random.randint(1, 64)).hex()
             return valid_values
@@ -2411,10 +2034,10 @@ def fuzz_sig_meter_reading(
             return gen_random_string(random.randint(1, 100))
         case ParamFuzzMode.SPECIAL_STRING:
             return gen_malicous_string()
-        case ParamFuzzMode.LONG_HEX:
+        case ParamFuzzMode.LONG_BASE64:
             return gen_invalid_base64_binary(max_length=64)
-        case ParamFuzzMode.SPECIAL_HEX:
-            return gen_malicous_hex()
+        case ParamFuzzMode.SPECIAL_BASE64:
+            return gen_malicous_base64()
         case ParamFuzzMode.INT:
             return gen_num()
         case ParamFuzzMode.NEGATIVE_INT:
@@ -2429,29 +2052,17 @@ def fuzz_sig_meter_reading(
                     "Invalid fuzzing mode for parameter with type "
                     "xs:base64Binary, using random mode."
                 )
-            invalid_string = gen_random_string(random.randint(1, 100))
-            invalid_special_string = gen_malicous_string()
-            invalid_hex_longer = gen_invalid_base64_binary(max_length=64)
-            invalid_special_hex = gen_malicous_hex()
-            invalid_num = gen_num()
-            invalid_neg_num = gen_num(negative_flag=True)
-            invalid_float_num = gen_num(float_flag=True)
-            invalid_neg_float_num = gen_num(
-                float_flag=True, negative_flag=True
-            )
-
-            return random.choice(
-                [
-                    invalid_string,
-                    invalid_special_string,
-                    invalid_hex_longer,
-                    invalid_special_hex,
-                    invalid_num,
-                    invalid_neg_num,
-                    invalid_float_num,
-                    invalid_neg_float_num,
-                ]
-            )
+            invalid_values = [
+                gen_random_string(random.randint(1, 100)),
+                gen_malicous_string(),
+                gen_invalid_base64_binary(max_length=64),
+                gen_malicous_base64(),
+                gen_num(),
+                gen_num(negative_flag=True),
+                gen_num(float_flag=True),
+                gen_num(float_flag=True, negative_flag=True),
+            ]
+            return random.choice(invalid_values)
 
 
 def fuzz_meter_status(

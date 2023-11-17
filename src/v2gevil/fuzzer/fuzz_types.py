@@ -139,7 +139,7 @@ def gen_invalid_string(
             return random.choice(invalid_values)
 
 
-def gen_malicous_string(valid_string: str = "") -> str:
+def gen_malicous_string(valid_string: Optional[str] = None) -> str:
     """Generate malicious string.
 
     String with special meaning in different context or language like
@@ -154,8 +154,10 @@ def gen_malicous_string(valid_string: str = "") -> str:
     # invalid_enum = (
     #    random.choice(list(responseCodeType)).value + malicious_string
     # )
+    if valid_string is None:
+        valid_string = ""
 
-    raise NotImplementedError
+    return valid_string + gen_random_string(random.randint(1, 100))
 
 
 def gen_malicous_hex(valid_hex: str = "") -> str:
