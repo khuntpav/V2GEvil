@@ -1,3 +1,8 @@
+"""This module is not used yet. It will be used for sending messages to EVCC/SECC
+
+It will probably required lower layer implementation like data link layer.
+"""
+
 from ..v2gtp import v2gtp
 
 # TODO: Probably there will be need for implementing also

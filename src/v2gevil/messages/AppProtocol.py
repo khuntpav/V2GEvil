@@ -12,11 +12,6 @@ from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict
 
 
-# TODO: Add information about fields from ISO 15118-2:2014
-# like min and max length, max value, min value, etc.
-# For all fields in all classes
-
-
 class responseCodeType(str, Enum):
     """Enum responseCodeType.
 

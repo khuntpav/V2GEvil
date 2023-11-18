@@ -6,6 +6,10 @@ This is not used for now, but it will be used in future -maybe-.
 Just thinking about it, maybe it will be better to use it for printing
 to console, instead of using print in v2gtp.py.
 """
+
+# THIS MODULE IS NOT USED YET
+# PROBABLY IT WILL BE DELETED IN FUTURE
+
 from ..v2gtp import v2gtp
 
 
