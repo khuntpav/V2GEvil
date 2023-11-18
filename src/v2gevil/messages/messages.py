@@ -326,10 +326,6 @@ def class_instance2xml(obj: object) -> str:
 
         # Add namespaces to keys
         dict_data = add_namespaces_to_keys(dict_data)
-        # TODO: Add namespaces to attributes using xmltodict - probably not possible
-        # TODO: Do that with lxml lib, cause i need some customization
-        # But for lxml lib the imput needs to be string, not dict
-        # not only adding namespaces to keys, but also based on its parent
 
         # xmltodict.unparse() can handle @ as prefix for attributes
         # So this is filling attributes for V2GMessage
@@ -541,33 +537,3 @@ def get_ns_prefixes(names: list):
         if name.startswith("@xmlns:"):
             prefixes.append(name.split(":")[1])
     return prefixes
-
-
-# TODO: Work on this later, for now my add prefix function is working
-if False:
-    from lxml import etree
-
-    # Parse the XML data
-    root = etree.fromstring(xml_data)
-    root = ET.fromstring(xml_data)
-
-    def add_prefixes_to_elements(element, current_namespace=None):
-        # Get the element's tag (name)
-        tag = element.tag
-
-        # Determine the namespace prefix for the element's tag
-        for namespace, elements in namespace_map.items():
-            if tag in elements:
-                current_namespace = namespace
-                break
-
-        # Add the namespace prefix to the element's tag
-        if current_namespace is not None:
-            element.tag = f"{current_namespace}:{tag}"
-
-        # Recursively process child elements
-        for child in element:
-            add_prefixes_to_elements(child, current_namespace)
-
-    # Start adding prefixes from the root element
-    add_prefixes_to_elements(root)
