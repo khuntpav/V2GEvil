@@ -240,7 +240,6 @@ class EVSEMessageGenerator:
         )
         return default_dict_ac
 
-    # TODO: Implement generate_default_dict_DC
     def generate_default_dict_DC(self, override_flag: bool = False) -> dict:
         """Generate default dictionary for DC charging mode.
 
@@ -920,31 +919,7 @@ class EVSEMessageGenerator:
     # DC messages END
     # Generators for default messages END
 
-    def generate(self, msg_name: str, params_dict: dict) -> dict:
-        """Will generate only dictionary for correspodnig response message.
-
-        Will load the default dict and pop the corresponding request message
-        and replace it with the generated response message.
-
-        Based on the msg_name will call the corresponding generate method.
-
-        and based on the message the procedure will be check if user
-        specify correct parameters which are from that message
-        and generator will generate values for that parameters if they exist.
-        """
-        # msg_name is not in the default dict, so we can not generate response
-        if not msg_name in self.default_dict:
-            logger.error(
-                "Message %s is not in the default dictionary.", msg_name
-            )
-            return {}
-
-        # TODO: Based on the prompted message name, call the corresponding generate method
-
-        # Check if all keys in params_dict are in the default dict for the msg_name
-        # TODO: think about this...
-
-        return {}
+    # RUNTIME METHODS START
 
     # Every method should first load the default dict for the specifig response message
     # and then it should change only values for the fields which are

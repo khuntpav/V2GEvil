@@ -132,8 +132,6 @@ class EVFuzzer:
 
     def fuzz_all(self):
         """Fuzz all possible messages and all possible parameters in messages."""
-        # TODO: Call generator and generate dict for concrete message and
-        # replace original one from fuzzing_dict
 
         # There will be calls for fuzzing methods for each message
         # each fuzzing method will create dict for concrete message
@@ -544,6 +542,7 @@ class EVFuzzer:
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
         self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
 
+    # TODO: Implement
     def fuzz_certificate_update_res(self, msg_config: Optional[dict] = None):
         """Fuzz certificateUpdateRes message in fuzzing_dict
 
@@ -592,8 +591,7 @@ class EVFuzzer:
         # RetryCounter is type short (in xml schema) => -32768-32767 (int in python)
         retry_counter = fuzz_retry_counter()
 
-        # TODO
-
+    # TODO: Implement
     def fuzz_certificate_installation_res(
         self, msg_config: Optional[dict] = None
     ):
@@ -639,8 +637,6 @@ class EVFuzzer:
         # FUZZ eMAID
         # eMAID is type EMAIDType (in xml schema)
         emaid = fuzz_emaid()
-
-        # TODO
 
     def fuzz_session_stop_res(self, msg_config: Optional[dict] = None):
         """Fuzz sessionStopRes message in fuzzing_dict
@@ -850,7 +846,7 @@ class EVFuzzer:
         )
 
 
-# TODO: Implement EVSEFuzzer, not part of the thesis
+# Not part of the thesis
 class EVSEFuzzer:
     """EVSE Fuzzer class.
 

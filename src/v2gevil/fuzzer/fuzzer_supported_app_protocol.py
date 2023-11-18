@@ -48,7 +48,7 @@ class FuzzerSupportedAppProtocolRes:
         )
 
 
-# TODO: Not part of thesis
+# Not part of thesis - not needed
 class FuzzerSupportedAppProtocolReq:
     """Fuzzer Class for Supported App Protocol Request message"""
 
