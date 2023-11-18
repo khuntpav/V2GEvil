@@ -172,14 +172,24 @@ class V2GTPMessage:
         return obj, obj_name
 
     def parse_v2gtp_sdp_request(self):
-        """Parse V2GTP SDP request."""
+        """Parse V2GTP SDP request.
+
+        Returns:
+            A tuple contains security byte and transport protocol byte,
+            which are received in SDP request.
+        """
         security_byte = self.payload[0:1]
         transport_proto_byte = self.payload[1:2]
 
         return security_byte, transport_proto_byte
 
     def parse_v2gtp_sdp_response(self):
-        """Parse V2GTP SDP response."""
+        """Parse V2GTP SDP response.
+
+        Returns:
+            A tuple contains server address bytes, server port bytes,
+            security byte and transport protocol byte.
+        """
         server_address = self.payload[0:16]
         server_port = self.payload[16:18]
         security_byte = self.payload[18:19]
@@ -190,7 +200,6 @@ class V2GTPMessage:
     # TODO: Implement also malicious brother of this method or just made some changes in this method
     # model_construct instead of model_validate, model_dump(warnings=False), etc
     # TODO: Implement this method
-    # TODO: Add enum_flag and based on that flag will be return obj or obj, obj_name
     def create_v2gtp_exi_msg_response(
         self,
         messages_dict: Optional[dict] = None,
@@ -736,7 +745,6 @@ def decode_v2gtp_sdp_response(
 ) -> tuple[bytes, bytes, str]:
     """Decode V2GTP SDP response payload type"""
     # TODO: Add decoding of SDP response / or some interpretation of it
-    # raise NotImplementedError("Not implemented yet! Exiting...")
     ip_address = payload[0:16]
     port = payload[16:18]
     port = int.from_bytes(port, byteorder="big")

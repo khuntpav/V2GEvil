@@ -135,39 +135,8 @@ def fuzz_ev(
         custom_dict_filename=custom_dict_filename,
         config_filename=config_filename,
     )
-    # TODO: Add custom dict support, only for the function not for the class
-
     # Fuzz
     # Depending on mode, different function will be called
     # message_name is only used in message mode
     # Only chosen message will be fuzzed, specified by message_name, in message mode
     ev_fuzzer.fuzz(message_name=message_name)
-
-
-@modules_tools.command(name="create-EV-custom-dict")
-@click.option(
-    "--charging-mode",
-    "-cm",
-    default="AC",
-    show_default=True,
-    help="Charging mode of EVSE. Possible values: AC, DC.",
-)
-@click.option(
-    "--filename",
-    "-fn",
-    default="",
-    show_default=True,
-    help="The name of the file to which the dictionary is to be saved",
-)
-# TODO: Add params like messages names and relevant params
-# TODO: Create some method like create custom fuzzing dict
-# TODO: ASK TOM, Do you think that this is a good idea?
-# because user can modify the dict in text editor
-# so i think in this case it will be good to not take care about values for params
-# but only about message name and relevant params
-def create_ev_fuzzing_dict(charging_mode: str, filename: str):
-    """Create custom fuzzing dict"""
-    # TODO: Check if file exist and inform user, if he wants to overwrite it
-    # flag for overwriting
-    exit()
-    raise NotImplementedError

@@ -64,13 +64,7 @@ class ServerManager:
         accept_security: bool = False,
         charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
         ev_enumerator: Optional[EVEnumerator] = None,
-        # TODO: Add message dict, which will be used to configure the station
-        # which content in the V2G responses should be
-        # TODO: Add charging mode or maybe handle that only by messages dict
-        # TODO: rename to messages_mapping_dict
         messages_mapping_dict: Optional[dict] = None,
-        # TODO: also implement method load_config_dict from file, loading json
-        # or yaml file, probably json
     ):
         """
         Initialize Server Manager.
@@ -85,11 +79,6 @@ class ServerManager:
             accept_security: Flag for accepting security from EVCC
             charging_mode: Charging mode of the station, AC or DC. Default AC.
         """
-        # TODO: Think about used config dict for all these attributes
-        # instead of passing them as arguments
-        # So maybe use something like config dict for some these parameters
-        # and message dict for the V2GTP messages: pairs request-response
-        # Can be defined by user
         self.interface = interface
         self.ipv6_address = ipv6_address
         self.protocol = protocol
