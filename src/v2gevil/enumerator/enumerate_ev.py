@@ -51,11 +51,15 @@ def enumerate_ev(
     # Collect all possible information about EV in the station
     # based on ev_enumerator, which is passed to the station
     # Data are saved in the ev_enumerator attributes
+    # TODO: Check if KeyboardInterrupt is needed
+    # try:
     station.start_async(
         interface=interface,
         accept_security=accept_security,
         ev_enumerator=ev_enumerator,
     )
+    # except KeyboardInterrupt:
+    #     print("Stopping station by user - CTRL+C")
 
     # TODO: Process ev_enumerator and print the results
     match enum_mode:
@@ -69,6 +73,7 @@ def enumerate_ev(
         case EVEnumMode.TLS_CHECK:
             ev_enumerator.print_tls_check_result()
             return
+        # TODO:
         case EVEnumMode.TLS_CHECK_ONLY:
             print("EVSE is not connected")
             return

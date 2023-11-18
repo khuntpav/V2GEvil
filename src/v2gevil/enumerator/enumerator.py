@@ -25,6 +25,7 @@ class EVEnumerator:
         self.enum_modes = set()
 
     # TODO: Handling is not implemented in the station in sdp server
+    # TODO: Probably delete this method => will not be used
     def tls_check_only(self):
         """Check if TLS is required by EV and after that stop the station.
         Based on the transmitted messages and information in them.
