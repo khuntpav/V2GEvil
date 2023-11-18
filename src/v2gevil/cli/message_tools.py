@@ -4,7 +4,7 @@ Calling logic from messages module.
 """
 
 import rich_click as click
-from ..messages import messages
+from tests import messages_tests
 from ..messages import generator
 from ..station.station_enums import (
     EVSEChargingMode,
@@ -32,9 +32,13 @@ def message_tools():
     is_flag=True,
     default=False,
     show_default=True,
-    help=f"Override existing default dictionary in file."
-    f"AC path: {EVSEDefaultDictPaths.AC_MODE_PATH}"
-    f"DC path: {EVSEDefaultDictPaths.DC_MODE_PATH}",
+    help="""Override flag for default dictionary.
+    If set to True, default dictionary will be overwritten.
+    Default dictionaries are in module called "messages", path to dictionaries:
+
+    - AC: default_dictionaries/default_dict_AC.json
+    
+    - DC: default_dictionaries/default_dict_DC.json""",
 )
 def generate_default(charging_mode: str, override_flag: bool):
     """Generate messages"""
@@ -60,13 +64,13 @@ def generate_default(charging_mode: str, override_flag: bool):
 @message_tools.command(name="testing2xml")
 def testing():
     """Testing"""
-    messages.testing()
+    messages_tests.testing()
 
 
 @message_tools.command(name="testing2instance")
 def testing2():
     """Testing"""
-    messages.testing_xml2class_instance()
+    messages_tests.testing_xml2class_instance()
 
 
 @message_tools.command(name="xml2instance")

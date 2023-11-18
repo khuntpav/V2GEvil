@@ -20,6 +20,8 @@ class EVSEDetails(str, Enum):
     SCHEMA_ID = "10"
     PROTOCOL_NAMESPACE = "urn:iso:15118:2:2013:MsgDef"
     INTERFACE = "eth_station"
+    CERT_FILE = "certs/evse_cert.pem"
+    KEY_FILE = "certs/evse_key.key"
 
 
 class EVSEDefaultDictPaths(str, Enum):

@@ -2,7 +2,7 @@ build/
 docs/
 .config/
 examples/
-tests/
+tests/test.py
 **test_*
 scripts/test.sh
 pyproject_poetry.toml
@@ -12,5 +12,10 @@ requirements.txt
 *.pyo
 src/v2gevil/v2gtp/v2gtp_description.md
 src/v2gevil/schemas/
+src/v2gevil/messages/convert2xml.py
+src/v2gevil/messages/json2xml.py
+src/v2gevil/station/certs/*
+!src/v2gevil/station/certs/README.md
 .vscode
 .python-version
+

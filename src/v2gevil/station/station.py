@@ -5,6 +5,7 @@ Module for station implementation.
 
 
 import logging
+import ssl
 import socket
 import struct
 import asyncio
@@ -87,6 +88,16 @@ class ServerManager:
         self.sdp_port = sdp_port
         # Station will use TLS if flag is True
         self.tls_flag = tls_flag
+        # If TLS is used, this is the version. Default TLSv1.2 (defined in ISO 15118-2)
+        self.tls_version = ssl.PROTOCOL_TLSv1_2
+        # GET Path to parent directory of this file (station dir)
+        station_abs_path = Path(__file__).parent.absolute()
+        self.certfile_path = station_abs_path.joinpath(
+            EVSEDetails.CERT_FILE.value
+        )
+        self.keyfile_path = station_abs_path.joinpath(
+            EVSEDetails.KEY_FILE.value
+        )
         # If True: Station will follow the security flag from the EVCC => override tls_flag
         self.accept_security = accept_security
         self.charging_mode = charging_mode
@@ -283,6 +294,8 @@ class ServerManager:
         Wait for connection from EVCC.
         After connection is established, stop the SDP server
         and wait for V2G communication session
+
+        Based on the tls_flag, for communication is used TCP or TLS protocol.
         """
         logger.debug("TCP server started")
 
@@ -310,6 +323,11 @@ class ServerManager:
             while not self.tcp_continue_flag.is_set():
                 try:
                     conn, addr = server_sock.accept()
+                    # TODO: Implement TLS based on the flag
+                    # if self.tls_flag:
+                    #     ssl_conn = ssl.wrap_socket(conn, server_side=True, certfile='server.pem', keyfile='server.key', ssl_version=self.tls_version)
+                    #     print("SSL connection established. Peer: ", ssl_conn.getpeercert())
+                    #     conn = ssl_conn
                     print("Connected by: ", addr)
                     self.tcp_continue_flag.set()
                     self.tcp_connection = conn
@@ -318,7 +336,7 @@ class ServerManager:
                     await asyncio.sleep(0.1)  # Non-blocking wait
             print("TCP server loop ended after connection established")
 
-    def tls_server(self):
+    async def tls_server(self):
         """Run TLS server.
 
         Wait for connection from EVCC.
@@ -376,13 +394,6 @@ class ServerManager:
                         enum_flag=False,
                         validate_flag=self.validate,
                     )
-
-                # TODO: Not sure if this is the best way to do it - DONE SEE ABOVE
-                # because I need to parse the message again, so it can be slowed down
-                # another approach is to save the message in the EVEnumerator without any info of name
-                # but for that approach i cannot filter here what messages to save without the names
-                # another approach is to return obj_name from create_response(), but it's hacky...
-                # Maybe add option to the create_response() enum_flag=True which will return also obj_name
 
                 response_message = v2gtp_res
                 # Following line just for IDE, because it cannot recognize
