@@ -183,11 +183,11 @@ def inspect(file: str, packet_num: int, show: str, decode_flag: bool):
         decode: Try to decode packet as V2GTP packet.
     """
 
-    # Check if isFile() if in analyze method
+    # Check if isFile() is in analyze method
     packets = analyze(file, ipv6=False, print_summary=False, decode_flag=False)
     if packets is None:
         logger.error("Packets are None!")
-        exit(1)
+        raise ValueError("Packets are None!")
 
     print(f"Inspecting packet number: {packet_num}")
     logger.debug("Number of packets: %s", len(packets))
@@ -195,14 +195,12 @@ def inspect(file: str, packet_num: int, show: str, decode_flag: bool):
         pkt = packets[packet_num]
     else:
         logger.error("Invalid packet number!")
-        exit(1)
+        raise ValueError("Invalid packet number!")
 
     show_enum = {"all", "raw", "ipv6", "tcp"}
     if show not in show_enum:
         logger.error("Invalid show option! Exiting...")
-        exit(1)
-        # Maybe switch to raise ValueError instead of exit
-        # raise ValueError("Invalid show option!")
+        raise ValueError("Invalid show option!")
 
     if show == "all":
         pkt.show()

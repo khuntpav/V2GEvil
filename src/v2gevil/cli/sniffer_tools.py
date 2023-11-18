@@ -121,7 +121,6 @@ def inspect(
     show: str,
     decode_flag: bool,
 ):
-    # TODO: Check if file exists
     """Method for inspecting one packet with given number of the packet"""
     sniffer.inspect(
         file=file, packet_num=packet_num, show=show, decode_flag=decode_flag
