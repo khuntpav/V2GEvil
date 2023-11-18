@@ -204,7 +204,7 @@ class V2GTPMessage:
         self,
         messages_dict: Optional[dict] = None,
         enum_flag: bool = False,
-        malicious_flag: bool = False,
+        validate_flag: bool = True,
     ) -> Union[tuple[bytes, str], bytes]:
         """Create V2GTP EXI message response.
 
@@ -270,11 +270,12 @@ class V2GTPMessage:
             # body_res = Body(**req_res_map[body_type_res]) -> this showing error in VSCode but it's working
             # the line below is without error in VSCode, also working in runtime
             # req_res_map[body_type_req] => dict for response class
-            body_res = Body.model_validate(req_res_map[body_type_req])
+            if validate_flag:
+                body_res = Body.model_validate(req_res_map[body_type_req])
+            else:
+                body_res = Body.model_construct(req_res_map[body_type_req])
 
-            # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
-            # also thi param is need to be check when model_dump, => model_dump(warnings=False)
-
+            # Maybe also here can be problem with warnings
             response_obj = V2G_Message(Header=header_res, Body=body_res)
 
         if isinstance(req_obj, supportedAppProtocolReq):
@@ -282,9 +283,14 @@ class V2GTPMessage:
             # if supportedAppProtocol is in req_res_map dictionary, then use it
             # if not, then use normal response
             if supportedAppProtocolReq.__name__ in req_res_map:
-                response_obj = Body.model_validate(
-                    req_res_map[supportedAppProtocolReq.__name__]
-                )
+                if validate_flag:
+                    response_obj = Body.model_validate(
+                        req_res_map[supportedAppProtocolReq.__name__]
+                    )
+                else:
+                    response_obj = Body.model_construct(
+                        req_res_map[supportedAppProtocolReq.__name__]
+                    )
             else:
                 for app_proto in req_obj.app_protocol:
                     if (
@@ -299,7 +305,9 @@ class V2GTPMessage:
         # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
         # also thi param is need to be check when model_dump, => model_dump(warnings=False)
         # Use messages.class_instance2xml() method => get XML from class instance
-        response_xml = messages.class_instance2xml(response_obj)
+        response_xml = messages.class_instance2xml(
+            response_obj, validate_flag=validate_flag
+        )
 
         # Use messages.xml2exi() to get EXI from XML
         response_exi = messages.xml2exi(response_xml)
@@ -382,6 +390,7 @@ class V2GTPMessage:
         tls_flag: bool = False,
         messages_dict: Optional[dict] = None,
         enum_flag: bool = False,
+        validate_flag: bool = False,
     ) -> Union[tuple[bytes, str], bytes]:
         """Create response message.
         
@@ -391,7 +400,9 @@ class V2GTPMessage:
         # Check if payload type is V2GTP EXI message or SDP message
         if self.is_v2gtp_exi_msg_data():
             return self.create_v2gtp_exi_msg_response(
-                messages_dict=messages_dict, enum_flag=enum_flag
+                messages_dict=messages_dict,
+                enum_flag=enum_flag,
+                validate_flag=validate_flag,
             )
 
         if self.is_v2gtp_sdp_request_data():

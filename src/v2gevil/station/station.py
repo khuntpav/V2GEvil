@@ -65,6 +65,7 @@ class ServerManager:
         charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
         ev_enumerator: Optional[EVEnumerator] = None,
         messages_mapping_dict: Optional[dict] = None,
+        validate: bool = True,
     ):
         """
         Initialize Server Manager.
@@ -89,9 +90,11 @@ class ServerManager:
         # If True: Station will follow the security flag from the EVCC => override tls_flag
         self.accept_security = accept_security
         self.charging_mode = charging_mode
-        self.messages_mapping_dict = messages_mapping_dict
         # If None => no enumeration
         self.ev_enumerator = ev_enumerator
+        self.messages_mapping_dict = messages_mapping_dict
+        # Indicate if validation for pydantic models is enabled
+        self.validate = validate
 
         # Cannot be defined by user
         self.udp_stop_flag = asyncio.Event()
@@ -107,6 +110,21 @@ class ServerManager:
             )
             self.messages_mapping_dict = msg_generator.default_dict
 
+    def print_config(self) -> None:
+        """Method for printing the configuration of the station."""
+        print("Station configuration:")
+        print(f"Interface: {self.interface}")
+        print(f"IPv6 address: {self.ipv6_address}")
+        print(f"Protocol: {self.protocol}")
+        print(f"SDP port: {self.sdp_port}")
+        print(f"TCP port: {self.tcp_port}")
+        print(f"TLS flag: {self.tls_flag}")
+        print(f"Accept security: {self.accept_security}")
+        print(f"Charging mode: {self.charging_mode}")
+        print(f"EV Enumerator: {self.ev_enumerator}")
+        print(f"Messages mapping dict: {self.messages_mapping_dict}")
+        print(f"Validate: {self.validate}")
+
     async def start(self):
         """Start station.
 
@@ -118,8 +136,7 @@ class ServerManager:
         logger.debug("Messages dict loaded:")
         logger.debug(self.messages_mapping_dict)
 
-        # TODO: Print whole configuration of the station, all the parameters
-        # self.print_config()
+        self.print_config()
 
         # After Data-Link is established
         udp_task = asyncio.create_task(self.sdp_server())
@@ -327,8 +344,6 @@ class ServerManager:
                 if not data:
                     break
                 print(f"Received from client: {data}")
-                # TODO: forward the config dict to V2GTPMessage
-                # and make all work in V2GTPMessage
                 v2gtp_req = V2GTPMessage(data)
                 # TODO: v2gtp_req.create_response() add malicious option and messages_dict
                 # malicious option indicates no validation when creating pydantic models
@@ -340,6 +355,7 @@ class ServerManager:
                     v2gtp_res, req_name = v2gtp_req.create_response(
                         messages_dict=self.messages_mapping_dict,
                         enum_flag=True,
+                        validate_flag=self.validate,
                     )
                     assert isinstance(req_name, str)  # Just for IDE
                     if req_name in self.ev_enumerator.msgs_for_enum:
@@ -358,6 +374,7 @@ class ServerManager:
                     v2gtp_res = v2gtp_req.create_response(
                         messages_dict=self.messages_mapping_dict,
                         enum_flag=False,
+                        validate_flag=self.validate,
                     )
 
                 # TODO: Not sure if this is the best way to do it - DONE SEE ABOVE
@@ -402,6 +419,7 @@ def start_async(
     charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
     ev_enumerator: Optional[EVEnumerator] = None,
     req_res_map: Optional[dict] = None,
+    validate: bool = True,
 ):
     """Start station.
 
@@ -414,6 +432,7 @@ def start_async(
         charging_mode=charging_mode,
         ev_enumerator=ev_enumerator,
         messages_mapping_dict=req_res_map,
+        validate=validate,
     )
     asyncio.run(manager.start())
 

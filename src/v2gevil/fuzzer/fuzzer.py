@@ -124,10 +124,13 @@ class EVFuzzer:
                 raise ValueError(f"Invalid fuzzing mode: {self.mode}")
 
         # In the end station is started with fuzzing_dict instead of default_dict
+        # validate=False because validation is not desirable, because fuzzing
+        # can produce invalid types or values for parameters of the messages
         station.start_async(
             interface=self.interface,
             charging_mode=self.charging_mode,
             req_res_map=self.fuzzing_dict,
+            validate=False,
         )
 
     def fuzz_all(self):
