@@ -52,7 +52,6 @@ class ParamFuzzMode(str, Enum):
     NEGATIVE_FLOAT = "negative-float"
     # Over or under float value - randomly chosen
     FLOAT = "float"
-    # TODO: Think about modes for hexBinary and base64Binary
     HEX = "hex"
     # hexBinary value will be shorter than min length specified in schema
     SHORT_HEX = "short-hex"
