@@ -162,12 +162,14 @@ class V2GTPMessage:
 
         # Get XML string from EXI payload
         xml_str = self.decode_v2gtp_exi_msg()
+        logger.debug("XML string from EXI payload:\n%s", xml_str)
 
         # Find what kind of req was received
         # Convert XML to data in dictionary => type dict
         obj = messages.xml2class_instance(xml_str)
         # obj_name will be V2G_Message or supportedAppProtocolReq/Res
         obj_name = obj.__class__.__name__
+        logger.debug("Object name: %s", obj_name)
 
         return obj, obj_name
 
@@ -284,12 +286,16 @@ class V2GTPMessage:
             # if not, then use normal response
             if supportedAppProtocolReq.__name__ in req_res_map:
                 if validate_flag:
-                    response_obj = Body.model_validate(
-                        req_res_map[supportedAppProtocolReq.__name__]
+                    response_obj = supportedAppProtocolRes.model_validate(
+                        req_res_map[supportedAppProtocolReq.__name__][
+                            supportedAppProtocolRes.__name__
+                        ]
                     )
                 else:
-                    response_obj = Body.model_construct(
-                        req_res_map[supportedAppProtocolReq.__name__]
+                    response_obj = supportedAppProtocolRes.model_construct(
+                        req_res_map[supportedAppProtocolReq.__name__][
+                            supportedAppProtocolRes.__name__
+                        ]
                     )
             else:
                 for app_proto in req_obj.app_protocol:
@@ -305,6 +311,9 @@ class V2GTPMessage:
         # TODO: Add option based on input parameter malicious_flag => model_construct instead of model_validate
         # also thi param is need to be check when model_dump, => model_dump(warnings=False)
         # Use messages.class_instance2xml() method => get XML from class instance
+        logger.debug("Response object:\n%s", response_obj)
+        logger.debug("Response object type:\n%s", type(response_obj))
+
         response_xml = messages.class_instance2xml(
             response_obj, validate_flag=validate_flag
         )

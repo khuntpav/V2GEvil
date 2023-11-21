@@ -569,10 +569,10 @@ class EVSEMessageGenerator:
                         RCD=False,
                     ),
                     EVSENominalVoltage=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.VOLT, Value=230
+                        Multiplier=0, Unit=unitSymbolType.VOLT, Value=230
                     ),
                     EVSEMaxCurrent=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.AMPERE, Value=15
+                        Multiplier=0, Unit=unitSymbolType.AMPERE, Value=15
                     ),
                 ),
             )
@@ -590,28 +590,28 @@ class EVSEMessageGenerator:
                         EVSEStatusCode=DC_EVSEStatusCodeType.EVSE_READY,
                     ),
                     EVSEMaximumCurrentLimit=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.AMPERE, Value=15
+                        Multiplier=0, Unit=unitSymbolType.AMPERE, Value=15
                     ),
                     EVSEMaximumPowerLimit=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.WATT, Value=230
+                        Multiplier=0, Unit=unitSymbolType.WATT, Value=230
                     ),
                     EVSEMaximumVoltageLimit=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.VOLT, Value=230
+                        Multiplier=0, Unit=unitSymbolType.VOLT, Value=230
                     ),
                     EVSEMinimumCurrentLimit=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.AMPERE, Value=15
+                        Multiplier=0, Unit=unitSymbolType.AMPERE, Value=15
                     ),
                     EVSEMinimumVoltageLimit=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.VOLT, Value=230
+                        Multiplier=0, Unit=unitSymbolType.VOLT, Value=230
                     ),
                     EVSECurrentRegulationTolerance=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.AMPERE, Value=15
+                        Multiplier=0, Unit=unitSymbolType.AMPERE, Value=15
                     ),
                     EVSEPeakCurrentRipple=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.AMPERE, Value=15
+                        Multiplier=0, Unit=unitSymbolType.AMPERE, Value=15
                     ),
                     EVSEEnergyToBeDelivered=PhysicalValueType(
-                        Multiplier=1, Unit=unitSymbolType.WATT_HOUR, Value=15
+                        Multiplier=0, Unit=unitSymbolType.WATT_HOUR, Value=15
                     ),
                 ),
             )
@@ -847,7 +847,7 @@ class EVSEMessageGenerator:
                 EVSEStatusCode=DC_EVSEStatusCodeType.EVSE_READY,
             ),
             EVSEPresentVoltage=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.VOLT, Value=230
+                Multiplier=0, Unit=unitSymbolType.VOLT, Value=230
             ),
         )
         return obj
@@ -870,22 +870,22 @@ class EVSEMessageGenerator:
                 EVSEStatusCode=DC_EVSEStatusCodeType.EVSE_READY,
             ),
             EVSEPresentVoltage=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.VOLT, Value=300
+                Multiplier=0, Unit=unitSymbolType.VOLT, Value=300
             ),
             EVSEPresentCurrent=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.AMPERE, Value=100
+                Multiplier=0, Unit=unitSymbolType.AMPERE, Value=100
             ),
             EVSECurrentLimitAchieved=False,
             EVSEVoltageLimitAchieved=False,
             EVSEPowerLimitAchieved=False,
             EVSEMaximumVoltageLimit=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.VOLT, Value=1000
+                Multiplier=0, Unit=unitSymbolType.VOLT, Value=1000
             ),
             EVSEMaximumCurrentLimit=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.AMPERE, Value=400
+                Multiplier=0, Unit=unitSymbolType.AMPERE, Value=400
             ),
             EVSEMaximumPowerLimit=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.WATT, Value=200000
+                Multiplier=0, Unit=unitSymbolType.WATT, Value=200000
             ),
             EVSEID=EVSEDetails.EVSE_ID,
             SAScheduleTupleID=1,
@@ -911,7 +911,7 @@ class EVSEMessageGenerator:
                 EVSEStatusCode=DC_EVSEStatusCodeType.EVSE_READY,
             ),
             EVSEPresentVoltage=PhysicalValueType(
-                Multiplier=1, Unit=unitSymbolType.VOLT, Value=230
+                Multiplier=0, Unit=unitSymbolType.VOLT, Value=230
             ),
         )
         return obj

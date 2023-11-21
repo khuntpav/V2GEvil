@@ -9,4 +9,3 @@ class EVEnumMode(str, Enum):
     SUPPORTED_PROTOCOLS = "supported_protocols"
     TLS_CHECK = "tls_check"
     TLS_ENUM = "tls_enum"
-    TLS_RECOGNITION = "tls_recognition"

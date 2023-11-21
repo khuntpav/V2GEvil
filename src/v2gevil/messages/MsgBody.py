@@ -207,7 +207,9 @@ class AuthorizationReq(BodyBaseType):
     model_config = ConfigDict(populate_by_name=True)
 
     # Id, xs:ID, attribute in XSD not element => need to add @
-    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
+    id: str = Field(
+        default=None, serialization_alias="@Id", validation_alias="@Id"
+    )
     # genChallengeType, xs:base64Binary, length 16, minOccurs 0 => required
     gen_challenge: str = Field(default=None, alias="GenChallenge")
 

@@ -4,11 +4,11 @@ Calling logic from messages module.
 """
 
 import rich_click as click
-from tests import messages_tests
+
+# from tests import messages_tests
 from ..messages import generator
 from ..station.station_enums import (
     EVSEChargingMode,
-    EVSEDefaultDictPaths,
 )
 
 
@@ -61,25 +61,25 @@ def generate_default(charging_mode: str, override_flag: bool):
 
 
 # TODO: Delete some of the following commands
-@message_tools.command(name="testing2xml")
-def testing():
-    """Testing"""
-    messages_tests.testing()
+# @message_tools.command(name="testing2xml")
+# def testing():
+#     """Testing"""
+#     messages_tests.testing()
 
 
-@message_tools.command(name="testing2instance")
-def testing2():
-    """Testing"""
-    messages_tests.testing_xml2class_instance()
+# @message_tools.command(name="testing2instance")
+# def testing2():
+#     """Testing"""
+#     messages_tests.testing_xml2class_instance()
 
 
-@message_tools.command(name="xml2instance")
-def xml2instance():
-    """Convert XML to instance"""
-    # messages.xml2class_instance()
+# @message_tools.command(name="xml2instance")
+# def xml2instance():
+#     """Convert XML to instance"""
+#     # messages.xml2class_instance()
 
 
-@message_tools.command(name="instance2xml")
-def instance2xml():
-    """Convert instance to XML"""
-    # messages.class_instance2xml()
+# @message_tools.command(name="instance2xml")
+# def instance2xml():
+#     """Convert instance to XML"""
+# messages.class_instance2xml()

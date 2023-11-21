@@ -18,8 +18,8 @@ class responseCodeType(str, Enum):
     Enum for responseCodeType. xs:string in the schema.
     """
 
-    SUCCESS_NEGOTIATION = "OK_SuccessfullNegotiation"
-    SUCCESS_MINOR_DEVIATION = "OK_SuccessfullNegotiationMinorDeviation"
+    SUCCESS_NEGOTIATION = "OK_SuccessfulNegotiation"
+    SUCCESS_MINOR_DEVIATION = "OK_SuccessfulNegotiationMinorDeviation"
     FAILED_NEGOTIATION = "FAILED_Negotiation"
 
 
@@ -43,8 +43,8 @@ class AppProtocolType(BaseModel):
     # Three dots (...) means that the field is required and has no default value
     # ProtocolNamespaceType, is xs:anyURI in the schema, max 100 chars
     proto_ns: str = Field(..., alias="ProtocolNamespace")
-    version_major: int = Field(..., alias="VersionMajor")
-    version_minor: int = Field(..., alias="VersionMinor")
+    version_major: int = Field(..., alias="VersionNumberMajor")
+    version_minor: int = Field(..., alias="VersionNumberMinor")
     # idType, is usignsignedByte in the schema
     schema_id: str = Field(..., alias="SchemaID")
     # priorityType, is xs:unsignedByte in the schema, values: 1-20

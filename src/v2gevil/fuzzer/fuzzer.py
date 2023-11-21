@@ -300,6 +300,8 @@ class EVFuzzer:
             # Call appropriate fuzzing method
             pairs_message_fuzz_method[name](msg_config=config_data[name])
 
+    # TODO: Maybe add to every fuzzing method if Runtime in msg_config
+    # then remove message from fuzzing_dict and message will not be fuzzed
     def fuzz_supported_app_protocol_res(
         self, msg_config: Optional[dict] = None
     ):

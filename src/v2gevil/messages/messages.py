@@ -48,6 +48,7 @@ def xml2class_instance(
         process_namespaces=True,
         namespaces=xmltodict_namespaces,
         force_list=(
+            "AppProtocol",
             "SelectedService",
             "Parameter",
             "PaymentOption",
@@ -67,6 +68,12 @@ def xml2class_instance(
     root_element = list(dict_data.keys())[0]
     dict_data = dict_data[root_element]
 
+    logger.debug("XML2class instance root_element: %s", root_element)
+    logger.debug("XML2class instance dict_data:")
+    logger.debug(dict_data)
+    # TODO: Maybe implement something for empty elements/messages
+    # to change None to empty dict {}
+
     # Check if it's V2G_Message or supportedAppProtocolReq/Res
     # Then creates a corresponding instance of the class
     # whose name is the root element of the dictionary
@@ -74,6 +81,12 @@ def xml2class_instance(
         # V2G_Message
         # Convert dict to class instance
         # V2G_Message.model_validate(dict_data) almost same, boht create class instance
+        # TODO: Problem with empty elements or messages like ServiceDiscoveryReq, which can be empty
+        empty_messages = ["ServiceDiscoveryReq", "AuthorizationReq"]
+        for msg in empty_messages:
+            if msg in dict_data["Body"]:
+                dict_data["Body"][msg] = {}
+
         obj = V2G_Message(**dict_data)
         print(obj)
         print(type(obj))
@@ -112,7 +125,7 @@ def class_instance2xml(obj: object, validate_flag: bool = True) -> str:
     Returns:
         str: XML string.
     """
-
+    logger.debug("Class instance2XML method")
     # V2G communication consists of two different Message Sets:
     #   - V2G application layer protocol handshake messages (refer to 8.2)
     #   - V2G application layer messages (refer to 8.3)
@@ -125,8 +138,10 @@ def class_instance2xml(obj: object, validate_flag: bool = True) -> str:
             dict_data = obj.model_dump(by_alias=True, exclude_unset=True)
         else:
             dict_data = obj.model_dump(
-                by_alias=True, exclude_none=True, warnings=False
+                by_alias=True, exclude_unset=True, warnings=False
             )
+
+        logger.debug("V2GMessage dict_data: %s", dict_data)
 
         # New root element
         root_element_name = "V2G_Message"
@@ -175,8 +190,9 @@ def class_instance2xml(obj: object, validate_flag: bool = True) -> str:
             dict_data = obj.model_dump(by_alias=True, exclude_unset=True)
         else:
             dict_data = obj.model_dump(
-                by_alias=True, exclude_none=True, warnings=False
+                by_alias=True, exclude_unset=True, warnings=False
             )
+        logger.debug("supportedAppProtocolRes dict_data: %s", dict_data)
         # New root element
         root_element_name = "supportedAppProtocolRes"
         root_element_name_with_ns = "n1" + ":" + root_element_name
@@ -185,7 +201,8 @@ def class_instance2xml(obj: object, validate_flag: bool = True) -> str:
 
         dict_data[root_element_name_with_ns][
             "@xsi:schemaLocation"
-        ] = "urn:iso:15118:2:2010:AppProtocol ../V2G_CI_AppProtocol.xsd"
+            # "urn:iso:15118:2:2010:AppProtocol ../V2G_CI_AppProtocol.xsd"
+        ] = "urn:iso:15118:2:2010:AppProtocol"
         dict_data[root_element_name_with_ns][
             "@xmlns:n1"
         ] = "urn:iso:15118:2:2010:AppProtocol"
@@ -194,6 +211,9 @@ def class_instance2xml(obj: object, validate_flag: bool = True) -> str:
         ] = "http://www.w3.org/2001/XMLSchema-instance"
 
         # Convert dict to XML string
+        logger.debug(
+            "supportedAppProtocolRes dict_data after adding ns: %s", dict_data
+        )
         xml_str = xmltodict.unparse(dict_data, pretty=False)
 
         # Delete new line after xml declaration, because xmltodict adds it
