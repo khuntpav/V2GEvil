@@ -69,6 +69,9 @@ def general_msg_fuzzing_method(
                         class_name,
                     )
                 required_fields = msg_config["RequiredParams"]
+                # Need to remove RequiredParams from config
+                # because it is not parameter for message
+                msg_config.pop("RequiredParams")
 
             # Fields is required but not specified in config => add to config
             # with {} => fuzz each parameter or fuzz value (simpleType)
@@ -92,5 +95,7 @@ def general_msg_fuzzing_method(
         msg_fuzz_dict[name] = pairs_name_method[name](
             attr_conf=msg_config[name], valid_values=valid_values
         )
+
+    # Put back RequiredParams to config ???
 
     return msg_fuzz_dict

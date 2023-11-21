@@ -89,7 +89,8 @@ class ServerManager:
         # Station will use TLS if flag is True
         self.tls_flag = tls_flag
         # If TLS is used, this is the version. Default TLSv1.2 (defined in ISO 15118-2)
-        self.tls_version = ssl.PROTOCOL_TLSv1_2
+        self.tls_version_min = ssl.TLSVersion.TLSv1_2
+        self.tls_version_max = ssl.TLSVersion.TLSv1_2
         # GET Path to parent directory of this file (station dir)
         station_abs_path = Path(__file__).parent.absolute()
         self.certfile_path = station_abs_path.joinpath(
@@ -318,31 +319,109 @@ class ServerManager:
             # This will accept only one client
             #  server doesn't accept new connections for each iteration of the loop
             # if i want that i should use while True and accept() in the loop
-
             server_sock.setblocking(False)
-            while not self.tcp_continue_flag.is_set():
-                try:
-                    conn, addr = server_sock.accept()
-                    # TODO: Implement TLS based on the flag
-                    # if self.tls_flag:
-                    #     ssl_conn = ssl.wrap_socket(conn, server_side=True, certfile='server.pem', keyfile='server.key', ssl_version=self.tls_version)
-                    #     print("SSL connection established. Peer: ", ssl_conn.getpeercert())
-                    #     conn = ssl_conn
-                    print("Connected by: ", addr)
-                    self.tcp_continue_flag.set()
-                    self.tcp_connection = conn
-                except BlockingIOError:
-                    # No incoming connection, perform other tasks or wait
-                    await asyncio.sleep(0.1)  # Non-blocking wait
+
+            if self.tls_flag:
+                # await self.tls_server(server_sock)
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context.load_cert_chain(self.certfile_path, self.keyfile_path)
+                context.minimum_version = self.tls_version_min
+                context.maximum_version = self.tls_version_max
+                logger.debug(
+                    "Minimum version of TLS: %s", context.minimum_version
+                )
+                logger.debug(
+                    "Maximum version of TLS: %s", context.maximum_version
+                )
+                # TODO: Add module for setting and checking used TLS version
+                # and USED cipher suites setting min and max tls version
+
+                with context.wrap_socket(
+                    server_sock, server_side=True
+                ) as ssock:
+                    while not self.tcp_continue_flag.is_set():
+                        try:
+                            conn, addr = ssock.accept()
+                            print("TLS, Connected by: ", addr)
+                            # Retrieve and print the negotiated cipher suite
+                            negotiated_cipher = conn.cipher()
+                            print(
+                                f"Negotiated Cipher Suite: {negotiated_cipher}"
+                            )
+                            # Retrieve and print the negotiated TLS version
+                            negotiated_tls_version = conn.version()
+                            print(
+                                f"Negotiated TLS Version: {negotiated_tls_version}"
+                            )
+                            # Retrieve shared cipher suites
+                            shared_ciphers = conn.shared_ciphers()
+                            print(f"Shared Cipher Suites: {shared_ciphers}")
+                            if self.ev_enumerator is not None:
+                                if (
+                                    EVEnumMode.TLS_ENUM
+                                    in self.ev_enumerator.enum_modes
+                                ):
+                                    self.ev_enumerator.tls_version = (
+                                        negotiated_tls_version
+                                    )
+                                    self.ev_enumerator.cipher_suite = (
+                                        negotiated_cipher
+                                    )
+                                    self.ev_enumerator.shared_ciphers = (
+                                        shared_ciphers
+                                    )
+
+                            self.tcp_continue_flag.set()
+                            self.tcp_connection = conn
+                        except BlockingIOError:
+                            # No incoming connection, perform other tasks or wait
+                            await asyncio.sleep(0.1)
+            else:
+                while not self.tcp_continue_flag.is_set():
+                    try:
+                        conn, addr = server_sock.accept()
+                        print("Plain TCP, Connected by: ", addr)
+                        self.tcp_continue_flag.set()
+                        self.tcp_connection = conn
+                    except BlockingIOError:
+                        # No incoming connection, perform other tasks or wait
+                        await asyncio.sleep(0.1)  # Non-blocking wait
             print("TCP server loop ended after connection established")
 
-    async def tls_server(self):
+    async def tls_server(self, server_sock: socket.socket):
         """Run TLS server.
 
         Wait for connection from EVCC.
         After connection is established, stop the SDP server
         and wait for V2G communication session.
         """
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain(self.certfile_path, self.keyfile_path)
+        context.minimum_version = self.tls_version_min
+        context.maximum_version = self.tls_version_max
+        logger.debug("Minimum version of TLS: %s", context.minimum_version)
+        logger.debug("Maximum version of TLS: %s", context.maximum_version)
+        # TODO: Add module for setting and checking used TLS version
+        # and USED cipher suites setting min and max tls version
+
+        with context.wrap_socket(server_sock, server_side=True) as ssock:
+            while not self.tcp_continue_flag.is_set():
+                try:
+                    conn, addr = ssock.accept()
+                    print("TLS, Connected by: ", addr)
+                    # Retrieve and print the negotiated cipher suite
+                    negotiated_cipher = conn.cipher()
+                    print(f"Negotiated Cipher Suite: {negotiated_cipher}")
+                    # Retrieve and print the negotiated TLS version
+                    negotiated_tls_version = conn.version()
+                    print(f"Negotiated TLS Version: {negotiated_tls_version}")
+                    self.tcp_continue_flag.set()
+                    self.tcp_connection = conn
+                except BlockingIOError:
+                    # No incoming connection, perform other tasks or wait
+                    await asyncio.sleep(0.1)
 
     async def v2gtp_comm_handler(self):
         """Handle V2GTP communication.

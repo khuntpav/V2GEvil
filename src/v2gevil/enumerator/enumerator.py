@@ -2,7 +2,7 @@
 and display it to the user.
 """
 import logging
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from ..v2gtp.v2gtp import V2GTPMessage
 from ..v2gtp.v2gtp_enums import V2GTPProtocols
@@ -23,18 +23,13 @@ class EVEnumerator:
         self.v2g_requests_dict: dict[str, V2GTPMessage] = {}
         self.msgs_for_enum = []
         self.enum_modes = set()
-
-    # TODO: Handling is not implemented in the station in sdp server
-    # TODO: Probably delete this method => will not be used
-    def tls_check_only(self):
-        """Check if TLS is required by EV and after that stop the station.
-        Based on the transmitted messages and information in them.
-        """
-        self.enum_modes.clear()
-        self.enum_modes.add(EVEnumMode.TLS_CHECK_ONLY)
-        raise NotImplementedError(
-            "Not implemented handling this in station(sdp_server()) yet!"
-        )
+        self.tls_version: Optional[str] = None  # TLS version
+        self.cipher_suite: Optional[
+            Tuple[str, str, int]
+        ] = None  # Tuple: (cipher_suite_name, version of TLS/SSL, number of secret bits)
+        self.shared_ciphers: Optional[
+            List[Tuple[str, str, int]]
+        ] = None  # list of tuples (defined above)
 
     def add_supported_protocols_check(self):
         """Enumerate which protocols are supported by EV."""
@@ -50,6 +45,12 @@ class EVEnumerator:
         # if EVEnumMode.TLS_CHECK not in self.enum_modes:
         #    self.enum_modes.append(EVEnumMode.TLS_CHECK)
         self.enum_modes.add(EVEnumMode.TLS_CHECK)
+
+    def add_tls_enum(self):
+        """Add TLS enumeration mode."""
+        # if EVEnumMode.TLS_ENUM not in self.enum_modes:
+        #    self.enum_modes.append(EVEnumMode.TLS_ENUM)
+        self.enum_modes.add(EVEnumMode.TLS_ENUM)
 
     def add_all(self):
         """Add all possible enumeration modes.
@@ -108,10 +109,73 @@ class EVEnumerator:
             f"trasport protocol: {transport_proto} for communication"
         )
 
+    def print_tls_enum_result(self):
+        """Print TLS enumeration result."""
+        if self.tls_version is None:
+            print("TLS is not used by EV!")
+            return
+        # Next two conditions are not needed, because if tls_version is None,
+        # they are empty
+        if self.cipher_suite is None or len(self.cipher_suite) == 0:
+            print("NO cipher suite!")
+            return
+        if self.shared_ciphers is None or len(self.shared_ciphers) == 0:
+            print("NO shared ciphers!")
+            return
+
+        print("TLS enumeration result:")
+        print(f"TLS negotiated version: {self.tls_version}")
+        print(f"TLS negotiated cipher suite: {self.cipher_suite}")
+        print(
+            f"TLS shared ciphers: {self.shared_ciphers}"
+            f"These are ciphers available in both the EV and the EVSE."
+        )
+
+        cipher_suites_iso_15118_2_2014 = [
+            "ECDH-ECDSA-AES128-SHA256",
+            "ECDHE-ECDSA-AES128-SHA256",
+        ]
+
+        if (
+            self.cipher_suite[0]  # pylint: disable=unsubscriptable-object
+            not in cipher_suites_iso_15118_2_2014
+        ):
+            logger.warning(
+                "EV negotiated cipher which is not allowed by ISO 15118-2:2014!"
+            )
+            print(
+                "EV negotiated cipher which is not allowed by ISO 15118-2:2014!"
+            )
+
+        for (
+            cipher_suite
+        ) in self.shared_ciphers:  # pylint: disable=not-an-iterable
+            if cipher_suite[0] not in cipher_suites_iso_15118_2_2014:
+                logger.warning(
+                    "EV offer cipher suite which is not allowed by ISO 15118-2:2014!"
+                )
+                print(
+                    "EV offer cipher suite which is not allowed by ISO 15118-2:2014!"
+                )
+                print(f"EV offer prohibited cipher suite: {cipher_suite}")
+
+        # Evaluation from ISO 15118-2:2014: Allowed TLS versions and cipher suites
+        # Table 7 — Supported cipher suites
+        # TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256
+        #  OpenSSL name: ECDH-ECDSA-AES128-SHA256
+        # TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+        #   OpenSSL name: OpenSSL name: ECDHE-ECDSA-AES128-SHA256
+        # Weak ciphers:
+        #   https://ciphersuite.info/cs/TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256/
+        #   https://ciphersuite.info/cs/TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256/
+        # TODO: Differ between -2 and -20 version of ISO 15118
+        # Different cipher suites requirements and TLS in 20 is mandatory not an option
+
     def print_all(self):
         """Print all enumeration results."""
         self.print_supported_protocols()
         self.print_tls_check_result()
+        self.print_tls_enum_result()
 
 
 class EVSEEnumerator:

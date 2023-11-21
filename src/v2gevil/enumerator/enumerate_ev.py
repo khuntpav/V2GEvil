@@ -44,8 +44,8 @@ def enumerate_ev(
             ev_enumerator.add_supported_protocols_check()
         case EVEnumMode.TLS_CHECK:
             ev_enumerator.add_tls_check()
-        case EVEnumMode.TLS_CHECK_ONLY:
-            ev_enumerator.tls_check_only()
+        case EVEnumMode.TLS_ENUM:
+            ev_enumerator.add_tls_enum()
 
     # Start station
     # Collect all possible information about EV in the station
@@ -74,6 +74,6 @@ def enumerate_ev(
             ev_enumerator.print_tls_check_result()
             return
         # TODO:
-        case EVEnumMode.TLS_CHECK_ONLY:
-            print("EVSE is not connected")
+        case EVEnumMode.TLS_ENUM:
+            ev_enumerator.print_tls_enum_result()
             return
