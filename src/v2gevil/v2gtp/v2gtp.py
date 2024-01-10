@@ -124,6 +124,8 @@ class V2GTPMessage:
     def decode_v2gtp_exi_msg(self) -> str:
         """Decode V2GTP EXI message."""
 
+        logger.debug("Trying to decode V2GTP message as V2GTP EXI message...")
+
         try:
             response = requests.post(
                 "http://localhost:9000",
@@ -275,7 +277,7 @@ class V2GTPMessage:
             if validate_flag:
                 body_res = Body.model_validate(req_res_map[body_type_req])
             else:
-                body_res = Body.model_construct(req_res_map[body_type_req])
+                body_res = Body.model_construct(**req_res_map[body_type_req])
 
             # Maybe also here can be problem with warnings
             response_obj = V2G_Message(Header=header_res, Body=body_res)
@@ -284,7 +286,9 @@ class V2GTPMessage:
             # Differ between runtime response and normal response
             # if supportedAppProtocol is in req_res_map dictionary, then use it
             # if not, then use normal response
+
             if supportedAppProtocolReq.__name__ in req_res_map:
+                print("SupportedAppProtocolReq used from dictionary!")
                 if validate_flag:
                     response_obj = supportedAppProtocolRes.model_validate(
                         req_res_map[supportedAppProtocolReq.__name__][
@@ -293,11 +297,12 @@ class V2GTPMessage:
                     )
                 else:
                     response_obj = supportedAppProtocolRes.model_construct(
-                        req_res_map[supportedAppProtocolReq.__name__][
+                        **req_res_map[supportedAppProtocolReq.__name__][
                             supportedAppProtocolRes.__name__
                         ]
                     )
             else:
+                print("Runtime SupportedAppProtocolRes used!")
                 for app_proto in req_obj.app_protocol:
                     if (
                         app_proto.proto_ns
@@ -313,6 +318,13 @@ class V2GTPMessage:
         # Use messages.class_instance2xml() method => get XML from class instance
         logger.debug("Response object:\n%s", response_obj)
         logger.debug("Response object type:\n%s", type(response_obj))
+        print("Created response object:")
+        if response_obj is not None:
+            print(
+                response_obj.model_dump(
+                    by_alias=True, exclude_unset=True, warnings=False
+                )
+            )
 
         response_xml = messages.class_instance2xml(
             response_obj, validate_flag=validate_flag

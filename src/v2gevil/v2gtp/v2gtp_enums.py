@@ -31,6 +31,14 @@ class V2GTPProtocols(bytes, Enum):
     # 0x11-0xFF = reserved
 
 
+class V2GTPSecurity(bytes, Enum):
+    """Enum for security byte in V2GTP SDP request/response."""
+
+    # Security byte
+    TLS = b"\x00"
+    NO_TLS = b"\x10"
+
+
 class V2GTPPorts(IntEnum):
     """Enum for V2GTP ports"""
 
