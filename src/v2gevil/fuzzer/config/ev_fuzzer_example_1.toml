@@ -1,0 +1,7 @@
+# Configuration for fuzzing messages
+# Only the messages listed here will be fuzzed
+[supportedAppProtocolRes]
+# Mandatory parameters according to ISO15118 are: ResponseCode.
+
+[SessionSetupRes]
+# Mandatory parameters according to ISO15118 are: ResponseCode, EVSEID

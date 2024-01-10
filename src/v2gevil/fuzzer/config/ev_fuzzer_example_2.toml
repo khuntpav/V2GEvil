@@ -1,0 +1,27 @@
+# ev_fuzzer_example_2.toml
+# Configuration for fuzzing messages
+# Only the messages listed here will be fuzzed
+[supportedAppProtocolRes]
+# Mandatory parameters according to ISO15118 are: ResponseCode.
+# User defined that required parameters for fuzzing are: ResponseCode, SchemaID
+RequiredParams = ["ResponseCode", "SchemaID"]
+
+# ResponseCode is enum, so it's string from the list of possible values
+[supportedAppProtocolRes.ResponseCode]
+Mode = "base64"
+
+# User does not specify mode for SchemaID, so it will be random mode
+
+
+[SessionSetupRes]
+# Mandatory parameters according to ISO15118 are: ResponseCode, EVSEID.
+# User defined that required parameters for fuzzing are: ResponseCode, EVSETimeStamp
+RequiredParams = ["ResponseCode", "EVSETimeStamp"]
+
+# User defined that parameter should be chosen from the list of possible valid values
+[SessionSetupRes.ResponseCode]
+Mode = "valid"
+
+# EVSETimestamp is type: long according to ISO15118
+[SessionSetupRes.EVSETimeStamp]
+Mode = "float"

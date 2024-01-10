@@ -1,0 +1,27 @@
+# ev_fuzzer_example_3.toml
+# Configuration for fuzzing messages
+# Only the messages listed here will be fuzzed
+
+
+[ServiceDiscoveryRes]
+RequiredParams = ["ResponseCode", "PaymentOptionList", "ChargeService"]
+
+[ServiceDiscoveryRes.ResponseCode]
+Mode = "random"
+
+# not the end parameter, no Mode, complex type parameter
+[ServiceDiscoveryRes.PaymentOptionList]
+RequiredParams = ["PaymentOption"]
+
+# end parameter => Mode, simple type parameter
+[ServiceDiscoveryRes.PaymentOptionList.PaymentOption]
+Mode = "string"
+
+[ServiceDiscoveryRes.ChargeService]
+RequiredParams = ["ServiceID", "ServiceName", "SupportedEnergyTransferMode"]
+
+[ServiceDiscoveryRes.ChargeService.SupportedEnergyTransferMode]
+RequiredParams = ["EnergyTransferMode"]
+
+[ServiceDiscoveryRes.ChargeService.SupportedEnergyTransferMode.EnergyTransferMode]
+Mode = "random"
