@@ -89,7 +89,7 @@ class ServerManager:
         # Station will use TLS if flag is True
         self.tls_flag = tls_flag
         # If TLS is used, this is the version. Default TLSv1.2 (defined in ISO 15118-2)
-        self.tls_version_min = ssl.TLSVersion.TLSv1_2
+        self.tls_version_min = ssl.TLSVersion.TLSv1
         self.tls_version_max = ssl.TLSVersion.TLSv1_2
         # GET Path to parent directory of this file (station dir)
         station_abs_path = Path(__file__).parent.absolute()
@@ -133,9 +133,11 @@ class ServerManager:
         print(f"TLS flag: {self.tls_flag}")
         print(f"Accept security: {self.accept_security}")
         print(f"Charging mode: {self.charging_mode}")
-        print(f"EV Enumerator: {self.ev_enumerator}")
-        print(f"Messages mapping dict: {self.messages_mapping_dict}")
-        print(f"Validate: {self.validate}")
+        # print(f"EV Enumerator: {self.ev_enumerator}")
+        # print(f"Messages mapping dict: {self.messages_mapping_dict}")
+        print(f"Validate flag for model_dump/construct: {self.validate}")
+        print(f"Cert PATH: {self.certfile_path}")
+        print(f"Keyfile PATH: {self.keyfile_path}")
 
     async def start(self):
         """Start station.
@@ -225,7 +227,7 @@ class ServerManager:
                 print("SDP server is running in while loop")
                 data, addr = sdp_socket.recvfrom(1024)
                 # TODO: Add parser for SDP request
-                print(f"Received {len(data)} bytes from {addr}: {data}")
+                logger.debug(f"Received {len(data)} bytes from {addr}: {data}")
                 sdp_request = V2GTPMessage(data)
                 requested_security, _ = sdp_request.parse_v2gtp_sdp_request()
 
@@ -233,14 +235,18 @@ class ServerManager:
                 if self.ev_enumerator is not None:
                     if EVEnumMode.TLS_CHECK in self.ev_enumerator.enum_modes:
                         self.ev_enumerator.sdp_request = sdp_request
-                # TODO: Try to end all the loops and stop the SDP server => stop station
-                # if it's possible
-                # if self.ev_enumerator is not None:
-                #     if (
-                #         EVEnumMode.TLS_CHECK_ONLY
-                #         in self.ev_enumerator.enum_modes
-                #     ):
-                #         logger.debug("Only TLS check performed, then exitting")
+
+                # True => station will use TLS
+                if self.tls_flag:
+                    if requested_security == V2GTPProtocols.TLS:
+                        self.accept_security = True
+                    elif requested_security == V2GTPProtocols.NO_TLS:
+                        self.accept_security = False
+                else:
+                    if requested_security == V2GTPProtocols.TLS:
+                        self.accept_security = False
+                    elif requested_security == V2GTPProtocols.NO_TLS:
+                        self.accept_security = True
 
                 # True => the station use same security as the EVCC requested
                 if self.accept_security:
@@ -249,18 +255,12 @@ class ServerManager:
                     elif requested_security == V2GTPProtocols.NO_TLS:
                         self.tls_flag = False
                 else:
-                    if (
-                        requested_security == V2GTPProtocols.TLS
-                        and self.tls_flag
-                    ):
-                        pass
-                    elif (
-                        requested_security == V2GTPProtocols.NO_TLS
-                        and not self.tls_flag
-                    ):
-                        pass
-                    else:
-                        continue
+                    if requested_security == V2GTPProtocols.TLS:
+                        self.tls_flag = False
+                    elif requested_security == V2GTPProtocols.NO_TLS:
+                        self.tls_flag = True
+
+                logger.debug("TLS flag is set to: %s", self.tls_flag)
 
                 # Create proper SDP response message
                 sdp_response = sdp_request.create_response(
@@ -324,8 +324,19 @@ class ServerManager:
             if self.tls_flag:
                 # await self.tls_server(server_sock)
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                context.load_cert_chain(self.certfile_path, self.keyfile_path)
+                # OR
+                # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                # TODO change, just to test with switchEV EVCC implementation
+                context.load_cert_chain(
+                    certfile=self.certfile_path,
+                    keyfile=self.keyfile_path,
+                    password="TODO_CHANGE_THIS",  # TODO: Add password
+                )
+                # context.set_ecdh_curve("prime256v1")
+                logger.debug(self.certfile_path)
+                logger.debug(self.keyfile_path)
+                # TODO: Add module for setting and checking used TLS version
+                # and USED cipher suites setting min and max tls version
                 context.minimum_version = self.tls_version_min
                 context.maximum_version = self.tls_version_max
                 logger.debug(
@@ -334,8 +345,9 @@ class ServerManager:
                 logger.debug(
                     "Maximum version of TLS: %s", context.maximum_version
                 )
-                # TODO: Add module for setting and checking used TLS version
-                # and USED cipher suites setting min and max tls version
+                logger.debug(
+                    "Supported cipher suites: %s", context.get_ciphers()
+                )
 
                 with context.wrap_socket(
                     server_sock, server_side=True
@@ -356,7 +368,6 @@ class ServerManager:
                             )
                             # Retrieve shared cipher suites
                             shared_ciphers = conn.shared_ciphers()
-                            print(f"Shared Cipher Suites: {shared_ciphers}")
                             if self.ev_enumerator is not None:
                                 if (
                                     EVEnumMode.TLS_ENUM
@@ -437,10 +448,11 @@ class ServerManager:
         conn = self.tcp_connection
         try:
             while True:
-                data = conn.recv(1024)
+                data = conn.recv(4096)
                 if not data:
                     break
-                print(f"Received from client: {data}")
+                print(80 * "-")
+                print(f"Received from client: {data.hex()}")
                 v2gtp_req = V2GTPMessage(data)
                 # TODO: v2gtp_req.create_response() add malicious option and messages_dict
                 # malicious option indicates no validation when creating pydantic models
@@ -448,6 +460,7 @@ class ServerManager:
                 # message_dict, based on this dict corresponding response is created
                 # TODO: For some other malicious modules will be some mapping for malicious module name and function
                 # which will be called for that module in this V2GTP communication handler
+                # print("Creating response:")
                 if self.ev_enumerator is not None:
                     v2gtp_res, req_name = v2gtp_req.create_response(
                         messages_dict=self.messages_mapping_dict,
@@ -483,6 +496,7 @@ class ServerManager:
             print(f"Error processing TCP data: {error}")
         finally:
             self.tcp_continue_flag.clear()
+            print("TCP connection closed")
             conn.close()  # Close the connection when done
 
 
@@ -506,6 +520,7 @@ def load_custom_dict_from_file(filename: str) -> dict:
 def start_async(
     interface: str = EVSEDetails.INTERFACE.value,
     accept_security: bool = True,
+    tls_flag: bool = False,
     charging_mode: Optional[EVSEChargingMode] = EVSEChargingMode.AC,
     ev_enumerator: Optional[EVEnumerator] = None,
     req_res_map: Optional[dict] = None,
@@ -519,6 +534,7 @@ def start_async(
     manager = ServerManager(
         interface=interface,
         accept_security=accept_security,
+        tls_flag=tls_flag,
         charging_mode=charging_mode,
         ev_enumerator=ev_enumerator,
         messages_mapping_dict=req_res_map,

@@ -20,8 +20,11 @@ class EVSEDetails(str, Enum):
     SCHEMA_ID = "10"
     PROTOCOL_NAMESPACE = "urn:iso:15118:2:2013:MsgDef"
     INTERFACE = "eth_station"
-    CERT_FILE = "certs/evse_cert.pem"
-    KEY_FILE = "certs/evse_key.key"
+    # CERT_FILE = "certs/evse_cert.pem"
+    # KEY_FILE = "certs/evse_key.key"
+    # TODO change, just to test with switchEV EVCC implementation
+    CERT_FILE = "certs/cpoCertChain.pem"
+    KEY_FILE = "certs/seccLeaf.key"
 
 
 class EVSEDefaultDictPaths(str, Enum):
