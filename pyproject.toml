@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "V2GEvil"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["khuntpav <khuntpav@fit.cvut.cz>"]
 readme = "README.md"
@@ -16,6 +16,12 @@ black = "^23.7.0"
 xmlschema = "^2.4.0"
 generateds = "^2.43.2"
 pydantic = "^2.3.0"
+deptry = "^0.12.0"
+xmltodict = "^0.13.0"
+dict2xml = "^1.7.3"
+json2xml = "^4.0.0"
+art = "^6.1"
+tomli = "^2.0.1"
 
 [build-system]
 requires = ["poetry-core"]
