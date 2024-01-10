@@ -66,12 +66,12 @@ def main(debug: bool):
 
 
 # Print banner
-console.print(
-    text2art("V2GEvil", font=random.choice(fonts)),
-    style="red bold",
-    highlight=False,  # False => Delete highlights from some characters
-    # For some fonts looks better with False
-)
+# console.print(
+#   text2art("V2GEvil", font="poison"),
+#    style="red bold",
+#    highlight=False,  # False => Delete highlights from some characters
+#    # For some fonts looks better with False
+# )
 main.add_command(sniffer_tools)
 main.add_command(v2gtp_tools)
 main.add_command(sender_tools)
