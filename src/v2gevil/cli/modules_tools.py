@@ -36,7 +36,7 @@ def modules_tools():
     default="all",
     show_default=True,
     help="Mode of enumeration. Possible values: all, supported_protocols,\
-        tls_check, tls_only_check. Default: all",
+        tls_check, tls_enum. Default: all",
 )
 def enumerate_ev(interface: str, enum_mode: str):
     """Enumerate EV"""

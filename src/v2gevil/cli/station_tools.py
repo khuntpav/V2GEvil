@@ -21,19 +21,18 @@ def station_tools():
     help="Interface to run station on",
 )
 @click.option(
-    "--async/--manual",
-    "async_flag",
-    default=True,
-    show_default=True,
-    help="Run station in async mode or manual mode",
-)
-@click.option(
-    "--accept-security",
+    "--accept-security/--no-accept-security",
     "accept_security",
-    is_flag=True,  # need to add is_flag, because i have no /--no-accept-security
     default=False,
     show_default=True,
     help="Station should follow security provided by EVCC",
+)
+@click.option(
+    "--tls/--no-tls",
+    "tls_flag",
+    default=False,
+    show_default=True,
+    help="Station should use TLS or should not use TLS.",
 )
 @click.option(
     "--charging-mode",
@@ -42,7 +41,6 @@ def station_tools():
     show_default=True,
     help="Charging mode of the EVSE. Possible values: AC, DC",
 )
-# TODO: Should i delete it? Because for custom dict is option in Fuzzer
 @click.option(
     "--custom-dict",
     "custom_dict_filename",
@@ -52,12 +50,12 @@ def station_tools():
 )
 def start_station(
     interface: str,
-    async_flag: bool,
     accept_security: bool,
+    tls_flag: bool,
     charging_mode: str,
     custom_dict_filename: str,
 ):
-    """Start station. By default is async (defined in click.option)"""
+    """Start station (SECC)"""
 
     # Need to convert string to enum for charging_mode
     try:
@@ -78,14 +76,11 @@ def start_station(
             filename=custom_dict_filename
         )
 
-    # Run station in async mode or manual mode
-    if async_flag:
-        station.start_async(
-            interface=interface,
-            accept_security=accept_security,
-            charging_mode=charging_mode,
-            req_res_map=custom_dict,
-        )
-    else:
-        # Deprecated
-        station.start(interface=interface)
+    # Run station in async mode
+    station.start_async(
+        interface=interface,
+        accept_security=accept_security,
+        tls_flag=tls_flag,
+        charging_mode=charging_mode,
+        req_res_map=custom_dict,
+    )
