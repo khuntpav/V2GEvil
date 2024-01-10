@@ -34,32 +34,34 @@ def enumerate_ev(
     # and that's why there is a conversion to enum
     # So here i can use enum directly instead of enum.value
     # Choose which enumeration mode to use
+    tls_flag = False
     match enum_mode:
         case None:
             print("EVSE is not connected")
             return
         case EVEnumMode.ALL:
             ev_enumerator.add_all()
+            tls_flag = True
         case EVEnumMode.SUPPORTED_PROTOCOLS:
             ev_enumerator.add_supported_protocols_check()
         case EVEnumMode.TLS_CHECK:
             ev_enumerator.add_tls_check()
         case EVEnumMode.TLS_ENUM:
             ev_enumerator.add_tls_enum()
+            tls_flag = True
 
     # Start station
     # Collect all possible information about EV in the station
     # based on ev_enumerator, which is passed to the station
-    # Data are saved in the ev_enumerator attributes
-    # TODO: Check if KeyboardInterrupt is needed
     # try:
     station.start_async(
         interface=interface,
         accept_security=accept_security,
         ev_enumerator=ev_enumerator,
+        tls_flag=tls_flag,
     )
     # except KeyboardInterrupt:
-    #     print("Stopping station by user - CTRL+C")
+    #    print("Stopping station by user - CTRL+C")
 
     # TODO: Process ev_enumerator and print the results
     match enum_mode:

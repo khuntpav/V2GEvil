@@ -5,7 +5,7 @@ import logging
 from typing import Optional, List, Tuple
 
 from ..v2gtp.v2gtp import V2GTPMessage
-from ..v2gtp.v2gtp_enums import V2GTPProtocols
+from ..v2gtp.v2gtp_enums import V2GTPProtocols, V2GTPSecurity
 from ..messages.AppProtocol import supportedAppProtocolReq
 from .enumerator_enums import EVEnumMode
 
@@ -60,11 +60,19 @@ class EVEnumerator:
         """
         self.add_supported_protocols_check()
         self.add_tls_check()
+        self.add_tls_enum()
 
     def print_supported_protocols(self) -> None:
         """Print supported protocols."""
 
         # Get supportedAppProtocolReq as V2GTPMessage instance from the dictionary
+
+        print(80 * "-")
+        print("Supported App protocols result:")
+        if "supportedAppProtocolReq" not in self.v2g_requests_dict:
+            print("Didn't receive supportedAppProtocolReq from EV!")
+            return
+
         v2gtp_req = self.v2g_requests_dict["supportedAppProtocolReq"]
 
         # Parse v2gtp_req using V2GTPMessage class method -> parse_v2gtp_exi_msg()
@@ -86,6 +94,8 @@ class EVEnumerator:
     def print_tls_check_result(self):
         """Print TLS check result."""
 
+        print(80 * "-")
+        print("TLS check result:")
         if self.sdp_request is None:
             print("EV's SDP request is not received!")
             return
@@ -94,19 +104,18 @@ class EVEnumerator:
             requested_trans_proto,
         ) = self.sdp_request.parse_v2gtp_sdp_request()
 
-        print("TLS check result:")
         if requested_security == V2GTPProtocols.NO_TLS:
-            logger.warning("EV does not require TLS!")
+            logger.warning("EV does not require TLS in SDP request!")
             print("EV does not require TLS! Unsecured communication is used!")
 
         # I cannot use V2GTPProtocols[], because in this case it's not the same
         # as enum name, but only as enum value
-        security = V2GTPProtocols(requested_security).name
+        security = V2GTPSecurity(requested_security).name
         transport_proto = V2GTPProtocols(requested_trans_proto).name
 
         print(
-            f"EV requested security: {security} and as"
-            f"trasport protocol: {transport_proto} for communication"
+            f"EV requested security: {security} and as a "
+            f"transport protocol: {transport_proto} for communication"
         )
 
     def print_tls_enum_result(self):
@@ -123,12 +132,13 @@ class EVEnumerator:
             print("NO shared ciphers!")
             return
 
+        print(80 * "-")
         print("TLS enumeration result:")
         print(f"TLS negotiated version: {self.tls_version}")
         print(f"TLS negotiated cipher suite: {self.cipher_suite}")
         print(
-            f"TLS shared ciphers: {self.shared_ciphers}"
-            f"These are ciphers available in both the EV and the EVSE."
+            f"TLS shared ciphers: {self.shared_ciphers}.\n"
+            f"Shared ciphers are ciphers available in both the EV and the EVSE."
         )
 
         cipher_suites_iso_15118_2_2014 = [
@@ -173,6 +183,8 @@ class EVEnumerator:
 
     def print_all(self):
         """Print all enumeration results."""
+        print(80 * "-")
+        print("EV enumeration results:")
         self.print_supported_protocols()
         self.print_tls_check_result()
         self.print_tls_enum_result()
