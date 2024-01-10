@@ -55,7 +55,7 @@ def xml2class_instance(
             "Service",
             "EnergyTransferMode",
             "ParameterSet",
-            "Certificate",
+            "Certificate",  # TODO: Problem, because for some it's as string and for others it's a list, with the same name "Certificate"
             "PMaxScheduleEntry",
             "Cost",
             "ConsumptionCost",
@@ -88,27 +88,31 @@ def xml2class_instance(
                 dict_data["Body"][msg] = {}
 
         obj = V2G_Message(**dict_data)
-        print(obj)
-        print(type(obj))
-        print(100 * "-")
+        # print(obj)
+        # print(type(obj))
+        # print(100 * "-")
+        print(obj.model_dump(by_alias=True, exclude_unset=True))
         return obj
 
     if root_element == "supportedAppProtocolReq":
         # supportedAppProtocolReq
         # Convert dict to class instance
         obj = supportedAppProtocolReq(**dict_data)
-        print(obj)
-        print(type(obj))
-        print(100 * "-")
+        # print(obj)
+        # print(type(obj))
+        # print(100 * "-")
+        print(obj.model_dump(by_alias=True, exclude_unset=True))
+        print()
         return obj
 
     if root_element == "supportedAppProtocolRes":
         # supportedAppProtocolRes
         # Convert dict to class instance
         obj = supportedAppProtocolRes(**dict_data)
-        print(obj)
-        print(type(obj))
-        print(100 * "-")
+        # print(obj)
+        # print(type(obj))
+        # print(100 * "-")
+        print(obj.model_dump(by_alias=True, exclude_unset=True))
         return obj
 
     # Should never happen

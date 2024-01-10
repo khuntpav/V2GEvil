@@ -141,6 +141,7 @@ def general_datatype_fuzzing_method(
         attr_conf = {}
         for field in all_fields:
             attr_conf[field] = None
+
     # attr_conf is dict => empty or not empty
     else:
         # attr_conf is empty => pass to all required fields {}
@@ -154,11 +155,14 @@ def general_datatype_fuzzing_method(
             # RequiredParams are specified in config => override required_fields
             if "RequiredParams" in attr_conf:
                 # Responsibility is up to user
-                if all(field in attr_conf for field in required_fields):
-                    logger.warning(
-                        "Not all required parameters are specified for fuzz in method %s. ",
-                        method_name,
-                    )
+                for field in attr_conf["RequiredParams"]:
+                    if field not in attr_conf:
+                        logger.warning(
+                            "Required parameter %s is not specified in config for fuzzing method %s. ",
+                            field,
+                            method_name,
+                        )
+                        logger.warning("Fuzzing with random mode")
                 required_fields = attr_conf["RequiredParams"]
                 # Pop RequiredParams from attr_conf if present,
                 # because for loop iterates through keys in attr_conf
@@ -175,6 +179,9 @@ def general_datatype_fuzzing_method(
 
     if valid_values is None:
         valid_values = {}
+
+    if isinstance(valid_values, list):
+        valid_values = valid_values[0]
 
     res_dict = {}
     # Here is because of keep consistency with other methods for complexTypes
@@ -277,6 +284,9 @@ def fuzz_evse_id(
     # => fuzz with random mode for end parameter
     mode = get_attr_conf_mode(attr_conf, "EVSEID")
     # After this attr_conf is not None and contains Mode key
+    if attr_conf is None:
+        attr_conf = {"Mode": "random"}
+
     assert attr_conf is not None
 
     if "Type" not in attr_conf:
@@ -386,7 +396,7 @@ def fuzz_evse_timestamp(
 
     # This is end parameter, so there is no passing None/{} to each sub parameter
     # => fuzz with random mode for end parameter
-    mode = get_attr_conf_mode(attr_conf, "EVSETimestamp")
+    mode = get_attr_conf_mode(attr_conf, "EVSETimeStamp")
 
     return gen_invalid_long(mode=mode, valid_val=valid_values)
 
@@ -429,6 +439,9 @@ def fuzz_payment_option_list(
         valid_values=valid_values,
         pairs_name_method=pairs_name_method,
     )
+
+    # Service is not list, but it is in ServiceListType
+    res_dict["PaymentOption"] = [res_dict["PaymentOption"]]
 
     return res_dict
 
@@ -762,17 +775,19 @@ def fuzz_parameter_name(
     """Fuzz parameter name. In standard is defined as xs:string"""
     # This is end parameter, so there is no passing None/{} to each sub parameter
     mode = get_attr_conf_mode(attr_conf, "Parameter Name")
+    if attr_conf is None or len(attr_conf) == 0:
+        attr_conf = {"Mode": "random"}
     # After this attr_conf is not None and contains Mode key
     assert attr_conf is not None
 
-    if attr_conf["Mode"] == ParamFuzzMode.VALID:
-        if valid_values is None:
+    if valid_values is None:
+        if attr_conf["Mode"] == ParamFuzzMode.VALID:
             logger.warning(
                 "No valid value specified for Parameter Name, "
                 "using default valid value randomly chosen from "
                 "parameter name examples from standard."
             )
-            valid_values = random.choice(["Protocol", "Port"])
+        valid_values = random.choice(["Protocol", "Port"])
 
     return gen_invalid_string(mode=mode, valid_val=valid_values)
 
@@ -795,6 +810,9 @@ def fuzz_parameter_type(
     # This is end parameter, so there is no passing None/{} to each sub parameter
     mode = get_attr_conf_mode(attr_conf, "Parameter Type")
     # After this attr_conf is not None
+
+    if attr_conf is None or len(attr_conf) == 0:
+        attr_conf = {"Mode": "random"}
     assert attr_conf is not None
 
     if mode == ParamFuzzMode.VALID:
@@ -896,11 +914,17 @@ def fuzz_parameter(
     if "Name" in attr_conf:
         attr_conf["@Name"] = attr_conf.pop("Name")
 
+    if "Type" not in attr_conf:
+        attr_conf["Type"] = None
+
     value_type = fuzz_parameter_type(attr_conf=attr_conf["Type"])
     required_fields.append(value_type)
     all_fields.append(value_type)
     attr_conf.pop("Type")
-    attr_conf[value_type] = attr_conf.pop("Value")
+    if "Value" in attr_conf:
+        attr_conf[value_type] = attr_conf.pop("Value")
+    else:
+        attr_conf[value_type] = None
     # After this in attr_conf is only @Name and value_type
     # value_type is one of the value_types => for ex.:
     # attr_conf {"@Name": "Port", "intValue": 12}
@@ -1800,29 +1824,34 @@ def fuzz_dc_evse_status(
 
 def fuzz_sa_provisioning_certificate_chain() -> str:
     """Fuzz sa provisioning certificate chain"""
-    raise NotImplementedError
+    # raise NotImplementedError
+    return ""
 
 
 def fuzz_contract_signature_cert_chain() -> str:
     """Fuzz contract signature certificate chain"""
-    raise NotImplementedError
+    # raise NotImplementedError
+    return ""
 
 
 def fuzz_contract_signature_encrypted_private_key() -> str:
     """Fuzz contract signature encrypted private key"""
-    raise NotImplementedError
+    # raise NotImplementedError
+    return ""
 
 
 def fuzz_dh_public_key() -> str:
     """Fuzz dh public key"""
-    raise NotImplementedError
+    # raise NotImplementedError
+    return ""
 
 
 def fuzz_emaid() -> str:
     """Fuzz emaid"""
 
     # TODO: Differ between EMAIDType and eMAIDType
-    raise NotImplementedError
+    # raise NotImplementedError
+    return ""
 
 
 def fuzz_retry_counter(mode: str = "valid") -> Union[str, int, float]:

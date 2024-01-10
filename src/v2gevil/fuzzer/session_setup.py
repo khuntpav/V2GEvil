@@ -35,7 +35,7 @@ class FuzzerSessionSetupRes:
         pairs_name_method = {
             "ResponseCode": fuzz_response_code,
             "EVSEID": fuzz_evse_id,
-            "EVSETimestamp": fuzz_evse_timestamp,
+            "EVSETimeStamp": fuzz_evse_timestamp,
         }
         # Required fields define in the standard
         required_fields = ["ResponseCode", "EVSEID"]

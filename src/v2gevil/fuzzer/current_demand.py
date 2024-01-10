@@ -79,4 +79,5 @@ class FuzzerCurrentDemandRes:
             pairs_name_method=pairs_name_method,
             required_fields=required_fields,
             all_fields=all_fields,
+            class_name=self.__class__.__name__,
         )

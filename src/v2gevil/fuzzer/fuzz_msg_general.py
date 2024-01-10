@@ -17,6 +17,10 @@ def general_msg_fuzzing_method(
 ) -> dict:
     """General method for fuzzing message"""
 
+    print(80 * "*")
+    print(f"FUZZING METHOD START for {class_name }")
+    print(f"BEFORE fuzzing msg_fuzz_dict:\n {msg_fuzz_dict}")
+
     if msg_default_dict is None:
         logger.warning(
             "Default values for fuzzing in class %s. "
@@ -63,11 +67,15 @@ def general_msg_fuzzing_method(
             # RequiredParams are specified in config => override required_fields
             if "RequiredParams" in msg_config:
                 # Responsibility is up to user
-                if all(field in msg_config for field in required_fields):
-                    logger.warning(
-                        "Not all required parameters are specified for fuzz in class %s. ",
-                        class_name,
-                    )
+                for field in msg_config["RequiredParams"]:
+                    if field not in msg_config:
+                        logger.warning(
+                            "Required parameter %s is not specified in config for fuzzing class %s. ",
+                            field,
+                            class_name,
+                        )
+                        logger.warning("Fuzzing with random mode")
+
                 required_fields = msg_config["RequiredParams"]
                 # Need to remove RequiredParams from config
                 # because it is not parameter for message
@@ -97,5 +105,7 @@ def general_msg_fuzzing_method(
         )
 
     # Put back RequiredParams to config ???
+    print(f"AFTER FUZZING msg_fuzz_dict:\n {msg_fuzz_dict}")
 
+    print(f"FUZZING METHOD END for {class_name }")
     return msg_fuzz_dict

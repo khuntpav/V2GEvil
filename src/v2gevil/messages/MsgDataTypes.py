@@ -273,7 +273,10 @@ class CertificateChainType(BaseModel):
     # attribute Id, xs:ID, in XSD is defined as attribute (need @ in json) =>
     # need to add populating by name in ConfigDict and serialization and validation alias
     # instead of alias, if only alias is used, it's working but pylance is complaining
-    id: str = Field(..., serialization_alias="@Id", validation_alias="@Id")
+    # not required in XSD
+    id: str = Field(
+        default=None, serialization_alias="@Id", validation_alias="@Id"
+    )
     # certificateType, minOccurs = 1 => required
     # certificateType is xs:base64Binary, maxLength 800
     # base64 encoded certificate, certificate in bytes

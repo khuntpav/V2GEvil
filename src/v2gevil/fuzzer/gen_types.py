@@ -305,8 +305,10 @@ def gen_malicous_hex(valid_hex: str = "") -> str:
     Hex with special meaning in different context or language like
     bash commands, xml, etc.
     """
-    # TODO:
-    raise NotImplementedError
+    if valid_hex is "":
+        valid_hex = "0x"
+
+    return valid_hex + gen_random_string(random.randint(1, 100))
 
 
 def gen_malicous_base64(valid_base64: str = "") -> str:
@@ -315,8 +317,9 @@ def gen_malicous_base64(valid_base64: str = "") -> str:
     Base64 with special meaning in different context or language like
     bash commands, xml, etc.
     """
-    # TODO:
-    raise NotImplementedError
+    if valid_base64 is "":
+        valid_base64 = "YXNkZmFzZGZzZGFmc2FmYQ=="
+    return valid_base64 + gen_random_string(random.randint(1, 100))
 
 
 def gen_invalid_int(

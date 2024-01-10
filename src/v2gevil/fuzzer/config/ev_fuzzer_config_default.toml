@@ -32,8 +32,8 @@ Mode = "random"
 [SessionSetupRes.EVSEID]
 Mode = "random"
 
-[SessionSetupRes.EVSETimeStamp]
-Mode = "random"
+#[SessionSetupRes.EVSETimeStamp]
+#Mode = "random"
 # SessionSetupRes END
 
 # ServiceDiscoveryRes START
@@ -43,10 +43,11 @@ RequiredParams = ["ResponseCode", "PaymentOptionList", "ChargeService"]
 [ServiceDiscoveryRes.ResponseCode]
 Mode = "random"
 
-
+# not the end parameter, no Mode
 [ServiceDiscoveryRes.PaymentOptionList]
 RequiredParams = ["PaymentOption"]
 
+# end parameter => Mode
 [ServiceDiscoveryRes.PaymentOptionList.PaymentOption]
 Mode = "random"
 
@@ -100,22 +101,25 @@ Mode = "random"
 
 [ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter]
 RequiredParams = ["Name", "Type", "Value"]
-Name= "random"
+
+[ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.Name]
+Mode= "random"
 # Can be different type of value: boolValue, byteValue, shortValue, intValue, physicalValue, stringValue
-Type = "random" # or for example "boolValue" = "random"
-Value = "random"
+[ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.Type]
+Mode = "random"
+value = "boolValue" # or "byteValue" or "shortValue" or "intValue" or "physicalValue" or "stringValue"
+
+[ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.Value]
+Mode = "random"
 # For Type="physicalValue" need to specify modes for multiplier, unit and value =>
 #[ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.physicalValue]
+
 #[ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.physicalValue.Multiplier]
 # Mode = "random"
 # [ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.physicalValue.Unit]
 # Mode = "random"
 # [ServiceDetailRes.ServiceParameterList.ParameterSet.Parameter.physicalValue.Value]
 # Mode = "random"
-#Multiplier = "random"
-#Unit = "random"
-#Value = "random"
-
 # ServiceDetailRes END
 
 # PaymentServiceSelectionRes START

@@ -82,7 +82,10 @@ class EVFuzzer:
         self.interface = interface
         self.mode = mode
         self.charging_mode = charging_mode
-        self.config_filename = config_filename
+        fuzzer_abs_path = Path(__file__).parent.absolute()
+        self.config_filename = fuzzer_abs_path.joinpath(
+            "config", config_filename
+        )
 
     def fuzz(self, message_name: str = ""):
         """Fuzz EVSE response messages."""
@@ -126,6 +129,7 @@ class EVFuzzer:
         # In the end station is started with fuzzing_dict instead of default_dict
         # validate=False because validation is not desirable, because fuzzing
         # can produce invalid types or values for parameters of the messages
+        print(80 * "*")
         station.start_async(
             interface=self.interface,
             charging_mode=self.charging_mode,
@@ -142,7 +146,7 @@ class EVFuzzer:
         # then replace message in fuzzing_dict with new one
 
         # If None value is set for params, all possible params will be fuzzed
-        self.fuzz_supported_app_protocol_res(msg_config=None)
+        # self.fuzz_supported_app_protocol_res(msg_config=None)
         self.fuzz_session_setup_res(msg_config=None)
         self.fuzz_service_discovery_res(msg_config=None)
         self.fuzz_service_detail_res(msg_config=None)
@@ -367,7 +371,9 @@ class EVFuzzer:
         )
 
         # Replace message in fuzzing_dict with fuzzed one (msg_dict_to_fuzz)
+        # print("Befofe fuzzing:", self.fuzzing_dict[req_key][res_key])
         self.fuzzing_dict[req_key][res_key] = msg_fuzzer.fuzz()
+        # print("After fuzzing:", self.fuzzing_dict[req_key][res_key])
 
     def fuzz_service_discovery_res(self, msg_config: Optional[dict] = None):
         """Fuzz serviceDiscoveryRes message in fuzzing_dict
