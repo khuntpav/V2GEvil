@@ -6,6 +6,8 @@ In the futrue there will be two parts:
 - Evil car: to exploit stations
 - Evil station: to exploit cars
 
+**IMPORTANT!**: The instruction / exact steps how to run / required equipment will be filled till the end of September 2024"
+
 ## How to make it running
 ~~I use pip in combination with pyproject.toml. I also use the pyenv with virtualenv plugin to manage Python version and dependencies.~~
 
