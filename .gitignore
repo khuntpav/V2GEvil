@@ -1,5 +1,4 @@
 build/
-docs/
 .config/
 examples/
 tests/test.py
