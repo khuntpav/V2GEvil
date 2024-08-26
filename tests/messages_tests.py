@@ -1,12 +1,6 @@
 """Module for testing the messages.py module"""
 
 import logging
-import xml.etree.ElementTree as ET
-import requests
-import json
-import xmltodict
-import time
-from typing import Union
 
 from src.v2gevil.messages.messages import (
     class_instance2xml,

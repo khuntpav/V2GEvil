@@ -330,7 +330,7 @@ class ServerManager:
                 context.load_cert_chain(
                     certfile=self.certfile_path,
                     keyfile=self.keyfile_path,
-                    password="TODO_CHANGE_THIS",  # TODO: Add password
+                    password="$ADD_PASSWORD",  # TODO: Add password
                 )
                 # context.set_ecdh_curve("prime256v1")
                 logger.debug(self.certfile_path)
