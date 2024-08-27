@@ -3,11 +3,13 @@
 This project will serve as an evaluation tool for V2G communication between a car and a station. It mainly focuses on the part of the communication from and to the car.
 
 In the futrue there will be two parts:
-- Evil car: to exploit stations
+- Evil car: to exploit stations - *not implemented*
 - Evil station: to exploit cars
 
-**IMPORTANT!**: The instruction / exact steps how to run / required equipment will be filled till the end of September 2024"
+The tool is outcome of my Master's thesis, complete theoretical background can be found in the [thesis](https://dspace.cvut.cz/handle/10467/113764).
 
+**IMPORTANT!**: 
+* The instruction / exact steps how to run / required equipment will be filled till the end of September 2024"
 ## How to make it running
 ~~I use pip in combination with pyproject.toml. I also use the pyenv with virtualenv plugin to manage Python version and dependencies.~~
 
@@ -82,6 +84,9 @@ I used following approach.
 
 
 ## Usage
+
+Detailed info about the tool and its usage can be found in my [Master's Thesis](https://dspace.cvut.cz/handle/10467/113764)
+
 ```bash
 # Name can be changed in pyproject.toml -> [tool.poetry.scripts]
 (v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil --help
@@ -117,4 +122,5 @@ I used following approach.
 
 
 ## Documentation
-I will use [mkdocs materials](https://squidfunk.github.io/mkdocs-material/getting-started/) for the documentation purposes.
+
+TBD
