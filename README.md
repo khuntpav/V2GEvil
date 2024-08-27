@@ -28,10 +28,15 @@ V2GEvil:~/V2GEvil$ pyenv install "$VERSION"
 V2GEvil:~/V2GEvil$ pyenv local $VERSION
 ```
 #### 4. Install poetry
+```bash
+# Install poetry only in the python 3.10.12 created by pyenv
+V2GEvil:~/V2GEvil$ python3 -m pip install install poetry
+```
+
 #### 5. Execute following commands
 ```bash
-V2GEvil:~/V2GEvil$ python3 -m poetry install
-V2GEvil:~/V2GEvil$ python3 -m poetry shell
+V2GEvil:~/V2GEvil$ poetry install # or with python3 -m poetry install
+V2GEvil:~/V2GEvil$ poetry shell # or with python3 -m poetry install
 (v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil
 ```
 
