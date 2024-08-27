@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "V2GEvil"
 version = "1.0.0"
-description = ""
-authors = ["khuntpav <khuntpav@fit.cvut.cz>"]
+description = "V2GEvil is tool for "
+license = "GPL-2.0-or-later"
+authors = ["Pavel Khunt <khuntpav@fit.cvut.cz>"]
+maintainers = ["Pavel Khunt <khuntpav@fit.cvut.cz>"]
 readme = "README.md"
+repository = "https://github.com/khuntpav/V2GEvil"
 packages = [{include = "src/v2gevil"}]
 
 [tool.poetry.dependencies]

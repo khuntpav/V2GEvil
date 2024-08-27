@@ -17,33 +17,6 @@ I use poetry together with pyproject.toml. Steps are belo2 this section.
 
 Starting with PEP 621, the Python community selected pyproject.toml as a standard way of specifying project metadata [Setuptools pyproject config](https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html).
 
-### ~~Old Steps~~
-#### 1. ~~Clone this repository~~
-#### 2. ~~cd to the repository~~
-#### 3. ~~Use pyenv virtualenv to create virtualenv for this project~~
-```bash
-# $VERSION - specific version of Python, recommended 3.10.12
-VERSION="3.10.12"
-NAME="V2GEvil"
-
-V2GEvil:~/V2GEvil$ pyenv install "$VERSION"
-V2GEvil:~/V2GEvil$ pyenv virtualenv "$VERSION" "$NAME"
-V2GEvil:~/V2GEvil$ pyenv activate "$NAME"
-
-```
-#### 4. ~~Install it as package~~
-```bash
-
-# Virtualevn is activated
-(V2GEvil) V2GEvil:~/V2GEvil$ pip3 install -e . # For development
-(V2GEvil) V2GEvil:~/V2GEvil$ pip3 install . # Normal install
-```
-
-I changed my strategy because it's not working. The virtualenv in pyenv is sometimes broken...
-I had to move to use poetry.
-I use pyenv for managing python version and poetry as dependency resolver and virtual environment
-for the isolation from the system.
-
 ### New Steps - development
 #### 1. Clone this repository
 #### 2. cd to the repository
@@ -57,8 +30,8 @@ V2GEvil:~/V2GEvil$ pyenv local $VERSION
 #### 4. Install poetry
 #### 5. Execute following commands
 ```bash
-V2GEvil:~/V2GEvil$ poetry install
-V2GEvil:~/V2GEvil$ poetry shell
+V2GEvil:~/V2GEvil$ python3 -m poetry install
+V2GEvil:~/V2GEvil$ python3 -m poetry shell
 (v2gevil-py3.10) V2GEvil:~/V2GEvil$ v2gevil
 ```
 
@@ -122,5 +95,7 @@ Detailed info about the tool and its usage can be found in my [Master's Thesis](
 
 
 ## Documentation
+
+Basic documentation is in the docs folder.
 
 TBD
