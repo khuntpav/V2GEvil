@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 """
 
-"""Module for car implementation.
+"""Module for car implementation (EVCC).
 
 This implementation will be done by using socket library."""
 
@@ -38,7 +38,7 @@ V2G_SRC_TCP_DATA = V2G_DST_TCP_DATA
 
 
 class ClientManager:
-    """Class for managing client (car)."""
+    """Class for managing client (car/EVCC)."""
 
     def __init__(
         self,
