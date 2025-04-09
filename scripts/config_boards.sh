@@ -75,8 +75,8 @@ get_ifname_from_MAC() {
         exit 1
     fi
 
-    IFNAME_CAR =$(ip -o link | grep "$MAC_CAR" | awk -F': ' '{print $2}')
-    IFNAME_STATION =$(ip -o link | grep "$MAC_STATION" | awk -F': ' '{print $2}')
+    IFNAME_CAR=$(ip -o link | grep "$MAC_CAR" | awk -F': ' '{print $2}')
+    IFNAME_STATION=$(ip -o link | grep "$MAC_STATION" | awk -F': ' '{print $2}')
 
 }
 

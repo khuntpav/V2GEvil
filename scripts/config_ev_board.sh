@@ -65,7 +65,7 @@ get_ifname_from_MAC() {
         echo "Error: Cannot be empty"
         exit 1
     fi
-    IFNAME_CAR =$(ip -o link | grep "$MAC_CAR" | awk -F': ' '{print $2}')
+    IFNAME_CAR=$(ip -o link | grep "$MAC_CAR" | awk -F': ' '{print $2}')
 
 }
 

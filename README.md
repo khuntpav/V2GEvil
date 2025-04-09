@@ -25,7 +25,7 @@ Starting with PEP 621, the Python community selected pyproject.toml as a standar
 VERSION="3.10.12"
 
 V2GEvil:~/V2GEvil$ pyenv install "$VERSION"
-V2GEvil:~/V2GEvil$ pyenv local $VERSION
+V2GEvil:~/V2GEvil$ pyenv local "$VERSION"
 ```
 #### 4. Install poetry
 ```bash
