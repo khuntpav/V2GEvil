@@ -8,8 +8,6 @@ In the futrue there will be two parts:
 
 The tool is outcome of my Master's thesis, complete theoretical background can be found in the [thesis](https://dspace.cvut.cz/handle/10467/113764).
 
-**IMPORTANT!**: 
-* The instruction / exact steps how to run / required equipment will be filled till the end of September 2024"
 ## How to make it running
 ~~I use pip in combination with pyproject.toml. I also use the pyenv with virtualenv plugin to manage Python version and dependencies.~~
 
